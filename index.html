@@ -2041,7 +2041,7 @@ function lancerSoiree() {
       f.feuille.insertBefore(barre, f.corps);
       f.feuille.insertBefore(etapesEl, f.corps);
       const majEtapes = () => {
-        vider(etapesEl).append(plan.etapes.map((e, k) => h("span", { class: k === iEtape ? "encours" : k < iEtape ? "fini" : "" }, `${k + 1}. ${TITRES_ACT[e.type]}`)));
+        vider(etapesEl).append(...plan.etapes.map((e, k) => h("span", { class: k === iEtape ? "encours" : k < iEtape ? "fini" : "" }, `${k + 1}. ${TITRES_ACT[e.type]}`)));
       };
       const tick = () => {
         const ms = chrono.ms();
@@ -2435,7 +2435,7 @@ function formErreur() {
   ouvrirFeuille({ titre: "Noter une erreur", construire: (f) => {
     const e = { mat: "hggsp", chap: "", type: "cours", description: "", aRetenir: "" };
     const selChap = h("select", { id: "e-chap", onchange: (ev) => { e.chap = ev.target.value; } });
-    const majChaps = () => { vider(selChap).append(h("option", { value: "" }, "— Aucun en particulier —"), CHAPITRES.filter((c) => c.mat === e.mat).map((c) => h("option", { value: c.id }, c.court))); e.chap = ""; };
+    const majChaps = () => { vider(selChap).append(h("option", { value: "" }, "— Aucun en particulier —"), ...CHAPITRES.filter((c) => c.mat === e.mat).map((c) => h("option", { value: c.id }, c.court))); e.chap = ""; };
     majChaps();
     f.corps.append(
       h("p", { class: "sous" }, "Une copie rendue, un exercice raté ? Note l’erreur tout de suite, elle reviendra dans tes séances jusqu’à ce que tu la relises."),
@@ -2792,7 +2792,7 @@ function formGO() {
     const qs = [...(S.config.questionsGO || ["", ""])];
     f.corps.append(
       h("p", { class: "sous" }, "Une bonne question est précise, problématisée et liée au programme. Exemple : « Le patrimoine est-il un outil de puissance pour les États ? » (HGGSP)."),
-      [0, 1].map((k) => h("label", { class: "champ" }, `Question ${k + 1}`, h("textarea", { id: `go-${k}`, style: "min-height:80px", value: qs[k] || "", oninput: (e) => { qs[k] = e.target.value; } }))),
+      ...[0, 1].map((k) => h("label", { class: "champ" }, `Question ${k + 1}`, h("textarea", { id: `go-${k}`, style: "min-height:80px", value: qs[k] || "", oninput: (e) => { qs[k] = e.target.value; } }))),
       h("button", { class: "btn grand primaire", type: "button", onclick: () => { majConfig({ questionsGO: qs.map((q) => (q || "").trim().slice(0, 300)) }); f.fermer(true); toast("Questions enregistrées."); } }, "Enregistrer"));
   } });
 }
