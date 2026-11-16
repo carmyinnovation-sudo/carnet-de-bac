@@ -446,14 +446,12 @@ table.tab td.n { text-align: right; font-variant-numeric: tabular-nums; }
 (function () {
 "use strict";
 /* ============================================================
-   CONTENU — programme de terminale (SES, HGGSP, philo, grand oral)
+   CONTENU — programme de terminale (HGGSP, philo, grand oral)
    Session 2027. Sources : notes de service du 11 septembre 2026
    (BO spécial n°4 du 17 septembre 2026), programmes officiels.
    ============================================================ */
 
 const MATIERES = {
-  ses:   { id: "ses",   nom: "SES",        long: "Sciences économiques et sociales", coef: 16,
-           epreuve: "Écrit de 4 h · mercredi 16 ou jeudi 17 juin 2027 (selon ta convocation)" },
   hggsp: { id: "hggsp", nom: "HGGSP",      long: "Histoire-géo, géopolitique et sciences politiques", coef: 16,
            epreuve: "Écrit de 4 h · mercredi 16 ou jeudi 17 juin 2027 (selon ta convocation)" },
   philo: { id: "philo", nom: "Philo",      long: "Philosophie", coef: 8,
@@ -469,7 +467,7 @@ const DATES_CLES = [
   { date: "2027-04-01", fin: null,         titre: "Parcoursup : dernier jour pour confirmer tes vœux", type: "parcoursup" },
   { date: "2027-06-01", fin: null,         titre: "Parcoursup : début des réponses des formations", type: "parcoursup" },
   { date: "2027-06-14", fin: null,         titre: "Bac : philosophie (8 h – 12 h)", type: "bac", mat: "philo" },
-  { date: "2027-06-16", fin: "2027-06-17", titre: "Bac : épreuves de spécialité (SES et HGGSP, un jour chacune)", type: "bac", mat: "spe" },
+  { date: "2027-06-16", fin: "2027-06-17", titre: "Bac : épreuves de spécialité (un jour par spécialité)", type: "bac", mat: "spe" },
   { date: "2027-06-21", fin: "2027-07-02", titre: "Bac : grand oral (date fixée par ton académie)", type: "bac", mat: "go" },
   { date: "2027-07-06", fin: null,         titre: "Résultats du bac", type: "bac" }
 ];
@@ -483,7 +481,7 @@ const ERREUR_TYPES = [
   { id: "consigne", nom: "Consigne mal lue / hors sujet", conseil: "Entoure les mots du sujet et reformule-le en une question avant d’écrire." },
   { id: "plan",     nom: "Problématique ou plan faible", conseil: "Avant de rédiger : une problématique en une phrase, puis 2 ou 3 parties qui y répondent." },
   { id: "exemple",  nom: "Exemple ou document mal utilisé", conseil: "Chaque argument = une idée + une explication + un exemple ou un chiffre précis." },
-  { id: "donnees",  nom: "Lecture de données / calcul", conseil: "Refais les 4 calculs clés : taux de variation, coefficient multiplicateur, part en %, points de %." },
+  { id: "donnees",  nom: "Lecture de données / calcul", conseil: "Avant d’utiliser un document chiffré, lis sa source, sa date et son unité, puis dis en une phrase ce qu’il montre." },
   { id: "langue",   nom: "Orthographe / expression",    conseil: "En 2027, au moins 2 points par épreuve comptent pour la langue. Garde 10 min de relecture." },
   { id: "temps",    nom: "Manque de temps",             conseil: "Fixe un temps par partie avant de commencer et surveille l’heure." },
   { id: "attention",nom: "Inattention",                 conseil: "Relis ta copie en cherchant une seule chose à la fois (dates, accords, chiffres)." }
@@ -491,30 +489,6 @@ const ERREUR_TYPES = [
 
 /* Types d’exercices */
 const EXERCICES = {
-  "ses-ec1": {
-    mat: "ses", nom: "Mobilisation des connaissances", duree: 15, sujetType: "ec1",
-    desc: "Partie 1 de l’épreuve composée (3,5 points en 2027).",
-    consigne: "Réponds en 15 à 20 lignes : définis les notions du sujet, explique 2 ou 3 mécanismes (cause → conséquence) et illustre-les avec un exemple précis.",
-    grille: [
-      ["cours", "J’ai défini les notions clés du sujet"],
-      ["mecanisme", "J’ai expliqué au moins 2 mécanismes (cause → conséquence)"],
-      ["exemple", "J’ai donné au moins un exemple précis"],
-      ["consigne", "J’ai répondu exactement à la question posée"],
-      ["langue", "J’ai relu l’orthographe et les accords"]
-    ]
-  },
-  "ses-dissert": {
-    mat: "ses", nom: "Dissertation : intro + plan détaillé", duree: 30, sujetType: "dissert",
-    desc: "Le cœur de la dissertation : si l’intro et le plan sont bons, la copie suit.",
-    consigne: "Écris l’introduction complète (accroche, définition des termes, problématique, annonce du plan), puis le plan détaillé : 2 ou 3 parties, chacune avec 2 ou 3 sous-parties (un mécanisme + un exemple chacune).",
-    grille: [
-      ["cours", "J’ai défini tous les termes du sujet"],
-      ["plan", "Ma problématique est une vraie question, en une phrase"],
-      ["plan", "Mes parties répondent à la problématique et ne se répètent pas"],
-      ["exemple", "Chaque sous-partie a un exemple, un chiffre ou un auteur"],
-      ["langue", "J’ai relu l’orthographe et les accords"]
-    ]
-  },
   "hggsp-dissert": {
     mat: "hggsp", nom: "Dissertation : intro + plan détaillé", duree: 30, sujetType: "dissert",
     desc: "Exercice 1 de l’épreuve : tu choisis entre deux sujets.",
@@ -578,26 +552,6 @@ const EXERCICES = {
 
 /* Méthodes du bac */
 const METHODES = [
-  { id: "m-ses-ec", mat: "ses", titre: "SES : l’épreuve composée",
-    intro: "4 heures. Le jour J, tu choisis entre la dissertation et l’épreuve composée. Les trois parties portent sur trois chapitres différents.",
-    etapes: [
-      ["Partie 1 · Mobilisation des connaissances (3,5 pts)", "Une question sans document. Définis les notions, explique 2 ou 3 mécanismes, illustre. Environ une page."],
-      ["Partie 2 · Étude d’un document (5,5 pts)", "Un tableau ou un graphique et deux questions. Lis la source et l’unité, fais les calculs demandés (taux de variation, part, points de %) et explique ce que les chiffres montrent."],
-      ["Partie 3 · Raisonnement (9 pts)", "Deux ou trois documents. Introduction (définitions + annonce), 2 ou 3 paragraphes construits « idée → explication → exemple ou document », conclusion."],
-      ["Maîtrise de la langue (2 pts)", "En 2027, 2 points sur 20 récompensent l’orthographe et la syntaxe. Garde 10 minutes pour relire."]
-    ],
-    pieges: ["Réciter le cours sans répondre à la question", "Paraphraser un document au lieu de l’exploiter", "Oublier l’unité d’un chiffre (%, points de %, milliards d’euros)"] },
-  { id: "m-ses-dissert", mat: "ses", titre: "SES : la dissertation",
-    intro: "4 heures, avec un dossier de 3 ou 4 documents. On attend une problématique, une argumentation et un plan cohérent.",
-    etapes: [
-      ["Analyse du sujet (20 min)", "Définis chaque terme, repère le type de question (« Comment… ? », « Dans quelle mesure… ? ») et ce qu’on attend de toi."],
-      ["Exploitation du dossier (30 min)", "Pour chaque document : l’idée principale et un chiffre clé. Classe-les selon tes parties."],
-      ["Plan détaillé (30 min)", "2 ou 3 parties, chacune avec 2 ou 3 sous-parties. Une sous-partie = un mécanisme + un exemple ou un document."],
-      ["Introduction", "Accroche (fait d’actualité, chiffre), définitions, problématique, annonce du plan."],
-      ["Rédaction et conclusion", "Une phrase de transition entre les parties. Conclusion : bilan qui répond à la problématique, puis ouverture."],
-      ["Relecture (10 min)", "Orthographe, accords, chiffres recopiés correctement."]
-    ],
-    pieges: ["Un plan « oui / non » mal équilibré", "Des parties qui se répètent", "Utiliser les documents sans connaissances personnelles"] },
   { id: "m-hggsp-dissert", mat: "hggsp", titre: "HGGSP : la dissertation",
     intro: "4 heures pour deux exercices : une dissertation (au choix entre deux sujets) et une étude critique de document(s), sur des thèmes différents. En 2027, seuls les thèmes 2, 4, 5 et 6 peuvent tomber.",
     etapes: [
@@ -640,7 +594,7 @@ const METHODES = [
   { id: "m-go", mat: "go", titre: "Grand oral : le déroulé 2027",
     intro: "Coefficient 8. 20 minutes de préparation, puis 20 minutes devant un jury de deux professeurs.",
     etapes: [
-      ["Tes deux questions", "Tu présentes deux questions préparées avec tes professeurs, qui couvrent tes deux spécialités (SES et HGGSP, séparément ou ensemble). Le jury en choisit une."],
+      ["Tes deux questions", "Tu présentes deux questions préparées avec tes professeurs, qui couvrent tes deux spécialités (HGGSP et ton autre spécialité, séparément ou ensemble). Le jury en choisit une."],
       ["Préparation (20 min)", "Tu organises tes idées et tu peux préparer un support (schéma, carte). Il n’est pas noté."],
       ["Présentation (10 min, debout)", "Pourquoi tu as choisi cette question, puis ta réponse argumentée."],
       ["Échange (10 min)", "Le jury te pousse à préciser et approfondir. Il peut aussi parler de ton projet après le bac."]
@@ -653,199 +607,6 @@ const METHODES = [
    bac: true = peut tomber à l’épreuve écrite de juin 2027
    ------------------------------------------------------------ */
 const CHAPITRES = [
-  /* ---------------- SES ---------------- */
-  { id: "ses-croissance", mat: "ses", groupe: "Science économique", bac: true, court: "Croissance",
-    titre: "Quels sont les sources et les défis de la croissance économique ?",
-    cartes: [
-      ["Croissance économique", "Augmentation durable de la production de biens et de services d’un pays. On la mesure par le taux de variation du PIB en volume (corrigé de la hausse des prix)."],
-      ["PIB", "Produit intérieur brut : somme des valeurs ajoutées créées par les producteurs résidents en un an, plus les impôts sur les produits, moins les subventions sur les produits."],
-      ["Les deux sources de la croissance", "1) L’accumulation des facteurs de production (plus de travail, plus de capital). 2) La hausse de leur efficacité, la productivité globale des facteurs, liée au progrès technique."],
-      ["Productivité globale des facteurs (PGF)", "Part de la croissance qui ne s’explique pas par l’augmentation des quantités de travail et de capital. Elle traduit surtout le progrès technique (le « résidu » de Solow)."],
-      ["Croissance endogène", "Théorie (Romer, Lucas, Barro) : le progrès technique naît des investissements en recherche, en capital humain et en infrastructures. Il s’auto-entretient grâce aux externalités positives."],
-      ["Destruction créatrice (Schumpeter)", "Les innovations font disparaître des produits, des entreprises et des emplois anciens tout en en créant de nouveaux. C’est le moteur du capitalisme selon Schumpeter."],
-      ["Institutions et droits de propriété", "Les institutions sont les règles qui encadrent l’activité économique. Des droits de propriété protégés (dont les brevets) incitent à investir et à innover, car l’innovateur peut tirer profit de son innovation."],
-      ["Progrès technique et inégalités", "Le progrès technique favorise souvent les travailleurs qualifiés, dont la demande et les salaires augmentent : il peut creuser les inégalités de revenus. Il crée aussi des rentes temporaires pour les innovateurs."],
-      ["Limites écologiques de la croissance", "Épuisement des ressources, pollutions, réchauffement climatique. Soutenabilité faible : le capital naturel peut être remplacé par du capital technique. Soutenabilité forte : il doit être préservé."],
-      ["Innovation et limites écologiques", "L’innovation peut faire reculer ces limites : énergies renouvelables, efficacité énergétique, recyclage. Limite : l’effet rebond (on consomme plus quand c’est plus efficace)."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que le progrès technique peut être source d’inégalités de revenus." },
-      { type: "dissert", texte: "Dans quelle mesure l’innovation permet-elle une croissance économique soutenable ?" }
-    ] },
-  { id: "ses-commerce", mat: "ses", groupe: "Science économique", bac: true, court: "Commerce international",
-    titre: "Quels sont les fondements du commerce international et de l’internationalisation de la production ?",
-    cartes: [
-      ["Avantage comparatif (Ricardo)", "Un pays a intérêt à se spécialiser dans les productions où il est relativement le plus efficace (ou le moins inefficace), même sans aucun avantage absolu, puis à échanger le reste."],
-      ["Dotations factorielles (modèle HOS)", "Un pays se spécialise dans les productions qui utilisent intensément le facteur dont il est relativement le mieux doté : travail peu qualifié, travail qualifié, capital, ressources naturelles."],
-      ["Dotations technologiques", "Une avance technologique (innovation, savoir-faire) permet à un pays d’exporter des produits que les autres ne savent pas produire aussi bien."],
-      ["Commerce entre pays comparables", "Il s’explique par la différenciation des produits (variétés, marques, qualité) et le goût des consommateurs pour la diversité. C’est souvent un commerce intra-branche."],
-      ["Différenciation horizontale / verticale", "Horizontale : même niveau de qualité, caractéristiques différentes (style, couleur). Verticale : niveaux de qualité différents (gamme)."],
-      ["Productivité des firmes et exportations", "Seules les entreprises les plus productives d’un territoire parviennent à exporter, car exporter coûte cher au départ (réseaux, adaptation des produits, logistique)."],
-      ["Chaîne de valeur mondiale", "La production est découpée en étapes (conception, composants, assemblage, distribution) réparties dans plusieurs pays, chacune là où elle est la plus avantageuse. Exemple : un smartphone."],
-      ["Firme multinationale (FMN)", "Entreprise qui possède au moins une unité de production à l’étranger, créée ou rachetée grâce à un investissement direct à l’étranger (IDE)."],
-      ["Effets du commerce international", "Gains : prix plus bas, plus de variété, rattrapage des pays en développement (moins d’inégalités entre pays). Mais hausse possible des inégalités au sein des pays (perdants : salariés peu qualifiés des secteurs concurrencés)."],
-      ["Libre-échange et protectionnisme", "Libre-échange : suppression des obstacles aux échanges. Protectionnisme : droits de douane, quotas, normes, subventions pour protéger les producteurs nationaux (ex. industries naissantes). Risque : représailles des partenaires."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que la productivité des entreprises conditionne leur capacité à exporter." },
-      { type: "dissert", texte: "Le commerce international n’a-t-il que des effets positifs ?" }
-    ] },
-  { id: "ses-chomage", mat: "ses", groupe: "Science économique", bac: true, court: "Chômage",
-    titre: "Comment lutter contre le chômage ?",
-    cartes: [
-      ["Chômeur au sens du BIT", "Personne de 15 ans ou plus qui, une semaine donnée, n’a pas travaillé (même une heure), est disponible pour travailler dans les 15 jours et a cherché activement un emploi dans le mois précédent (ou en a trouvé un qui commence dans les 3 mois)."],
-      ["Taux de chômage / taux d’emploi", "Taux de chômage = chômeurs ÷ population active × 100. Taux d’emploi = personnes en emploi ÷ population en âge de travailler (15-64 ans) × 100."],
-      ["Sous-emploi", "Personnes qui ont un emploi mais travaillent moins qu’elles le souhaitent : temps partiel subi, chômage technique ou partiel."],
-      ["Halo autour du chômage", "Personnes sans emploi qui souhaitent travailler mais ne sont pas comptées comme chômeurs (pas disponibles tout de suite, ou qui ne cherchent pas activement)."],
-      ["Chômage structurel", "Chômage durable qui ne dépend pas de la conjoncture : il vient du fonctionnement du marché du travail (institutions, asymétries d’information, problèmes d’appariement)."],
-      ["Chômage conjoncturel", "Chômage dû à un ralentissement de l’activité : la demande globale baisse, les entreprises produisent moins et réduisent leurs embauches."],
-      ["Salaire d’efficience", "Salaire plus élevé que le salaire d’équilibre, versé pour motiver, fidéliser et attirer les meilleurs salariés, car l’employeur ne peut pas observer parfaitement leurs efforts (asymétrie d’information). Il peut créer du chômage."],
-      ["Institutions et chômage", "Salaire minimum et règles de protection de l’emploi protègent les salariés, mais peuvent, selon certains économistes, freiner l’embauche des moins qualifiés. Leur effet réel fait débat."],
-      ["Problèmes d’appariement", "Offres et demandes de travail se rencontrent mal : qualifications qui ne correspondent pas, emplois loin des chômeurs, information imparfaite. Il y a alors à la fois des chômeurs et des postes vacants."],
-      ["Politiques contre le chômage", "Contre le chômage conjoncturel : soutien de la demande globale (politiques budgétaire et monétaire). Contre le chômage structurel : baisse du coût du travail, formation, flexibilisation du marché du travail."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que les asymétries d’information sur le marché du travail peuvent être à l’origine de chômage structurel." },
-      { type: "dissert", texte: "Quelles politiques permettent de lutter efficacement contre le chômage ?" }
-    ] },
-  { id: "ses-crises", mat: "ses", groupe: "Science économique", bac: false, court: "Crises financières",
-    titre: "Comment expliquer les crises financières et réguler le système financier ?",
-    cartes: [
-      ["Crise financière", "Chute brutale du prix des actifs (actions, immobilier), faillites d’institutions financières et paniques. Exemples : krach de 1929, crise des subprimes de 2008."],
-      ["Bulle spéculative", "Hausse du prix d’un actif bien au-delà de sa valeur réelle, entretenue par ceux qui achètent en espérant une nouvelle hausse. Elle finit par éclater (krach)."],
-      ["Panique bancaire", "Les déposants, craignant la faillite de leur banque, retirent tous leur argent en même temps, ce qui peut provoquer cette faillite."],
-      ["Effet de richesse négatif", "Quand le prix de leurs actifs baisse, les ménages se sentent moins riches et réduisent leur consommation, ce qui ralentit l’économie."],
-      ["Aléa moral", "Un acteur qui se sait protégé prend plus de risques. Exemple : une grande banque qui compte être sauvée par l’État si elle fait faillite."],
-      ["Régulation du système financier", "Supervision des banques, exigences de fonds propres (accords de Bâle), banque centrale prêteur en dernier ressort, union bancaire européenne."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que les paniques bancaires peuvent transformer une crise financière en crise économique." }
-    ] },
-  { id: "ses-europe", mat: "ses", groupe: "Science économique", bac: true, court: "Politiques européennes",
-    titre: "Quelles politiques économiques dans le cadre européen ?",
-    cartes: [
-      ["Marché unique européen", "Espace sans frontières intérieures où circulent librement marchandises, services, capitaux et personnes (prévu par l’Acte unique de 1986, en place depuis 1993)."],
-      ["Zone euro", "Pays de l’Union européenne qui ont adopté l’euro (créé en 1999, pièces et billets en 2002). Leur politique monétaire est menée par la Banque centrale européenne (BCE)."],
-      ["Politique européenne de la concurrence", "Menée par la Commission européenne : elle sanctionne les ententes et les abus de position dominante, contrôle les fusions et les aides d’État, pour des prix bas, de la qualité et de l’innovation."],
-      ["Limites de la politique de la concurrence", "Elle peut empêcher l’émergence de « champions européens » capables de rivaliser avec les géants américains et chinois, et freiner les politiques industrielles."],
-      ["Politique monétaire de la BCE", "La BCE fixe ses taux directeurs pour maintenir la stabilité des prix (inflation proche de 2 % à moyen terme). Baisser les taux encourage le crédit, l’investissement et la consommation."],
-      ["Politique budgétaire", "Utilisation des dépenses et des recettes publiques pour agir sur l’activité : relance (plus de dépenses, moins d’impôts) ou rigueur. Dans l’UE, elle reste décidée par chaque État."],
-      ["Choc asymétrique", "Choc qui touche un pays et pas les autres. La BCE ne peut pas y répondre (un seul taux pour toute la zone) : c’est à la politique budgétaire du pays touché d’agir."],
-      ["Règles budgétaires européennes", "Pacte de stabilité et de croissance : déficit public limité à 3 % du PIB et dette publique à 60 % du PIB (règles réformées en 2024). Elles limitent la marge de relance des États."],
-      ["Coordination des politiques budgétaires", "Sans coordination, un pays peut profiter de la relance des autres sans dépenser lui-même (passager clandestin). Exemple de coordination : le plan de relance NextGenerationEU (2020)."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que la politique monétaire de la BCE peut agir sur la conjoncture." },
-      { type: "dissert", texte: "La politique budgétaire est-elle efficace dans la zone euro ?" }
-    ] },
-  { id: "ses-structure", mat: "ses", groupe: "Sociologie et science politique", bac: true, court: "Structure sociale",
-    titre: "Comment est structurée la société française actuelle ?",
-    cartes: [
-      ["PCS", "Professions et catégories socioprofessionnelles de l’Insee : classement selon le métier, le statut et la qualification. 6 groupes d’actifs : agriculteurs exploitants ; artisans, commerçants, chefs d’entreprise ; cadres ; professions intermédiaires ; employés ; ouvriers."],
-      ["Facteurs de hiérarchisation de l’espace social", "PCS, revenu, diplôme, composition du ménage, position dans le cycle de vie (âge), sexe, lieu de résidence."],
-      ["Évolutions de la structure socioprofessionnelle", "Depuis les années 1950 : salarisation, tertiarisation, élévation du niveau de qualification, féminisation des emplois. Moins d’agriculteurs et d’ouvriers, plus de cadres et de professions intermédiaires."],
-      ["Classes sociales chez Marx", "Groupes définis par leur place dans les rapports de production : la bourgeoisie possède les moyens de production, le prolétariat vend sa force de travail. Classe en soi + conscience de classe = classe pour soi. Lutte des classes."],
-      ["Stratification chez Weber", "Approche multidimensionnelle : ordre économique (classes, selon l’accès aux biens), ordre social (groupes de statut, selon le prestige), ordre politique (partis)."],
-      ["Moyennisation", "Thèse d’Henri Mendras : une vaste classe moyenne s’est développée et les écarts se sont réduits pendant les Trente Glorieuses. Elle est discutée depuis la remontée des inégalités."],
-      ["Arguments pour une lecture en classes", "Persistance des inégalités de revenus et de patrimoine, homogamie, reproduction sociale, forte conscience de classe de la grande bourgeoisie (travaux des Pinçon-Charlot)."],
-      ["Arguments contre une lecture en classes", "Individualisation des parcours, affaiblissement de la conscience de classe ouvrière, poids d’autres critères (genre, âge, origine), identifications subjectives floues."],
-      ["Rapports sociaux de genre", "Rapports inégalitaires entre hommes et femmes qui traversent les classes : écarts de salaires et de carrière, répartition inégale des tâches domestiques."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Distinguez l’approche de Marx et celle de Weber de la stratification sociale." },
-      { type: "dissert", texte: "Une analyse en termes de classes sociales est-elle encore pertinente pour rendre compte de la société française ?" }
-    ] },
-  { id: "ses-ecole", mat: "ses", groupe: "Sociologie et science politique", bac: false, court: "École",
-    titre: "Quelle est l’action de l’École sur les destins individuels et sur l’évolution de la société ?",
-    cartes: [
-      ["Massification scolaire", "Hausse du nombre d’élèves et d’étudiants qui accèdent à des niveaux d’études de plus en plus élevés (environ 8 jeunes sur 10 d’une génération obtiennent aujourd’hui le bac)."],
-      ["Démocratisation scolaire", "Réduction des inégalités d’accès aux diplômes selon l’origine sociale. Pierre Merle parle de démocratisation ségrégative quand tous progressent mais dans des filières inégales."],
-      ["Capital culturel (Bourdieu)", "Ressources culturelles transmises par la famille (langage, savoirs, diplômes, rapport à la culture). Elles favorisent la réussite scolaire, car l’école valorise la culture des milieux favorisés."],
-      ["Stratégies des familles (Boudon)", "Les familles font des choix d’orientation selon un calcul coûts/avantages qui dépend de leur position sociale : à résultats égaux, les familles populaires visent des études plus courtes."],
-      ["Socialisation et parcours scolaires", "La socialisation familiale (lecture, suivi des devoirs, ambitions) et la socialisation genrée (orientations différentes des filles et des garçons) influencent les parcours."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que le capital culturel contribue aux inégalités de réussite scolaire." }
-    ] },
-  { id: "ses-mobilite", mat: "ses", groupe: "Sociologie et science politique", bac: true, court: "Mobilité sociale",
-    titre: "Quels sont les caractéristiques contemporaines et les facteurs de la mobilité sociale ?",
-    cartes: [
-      ["Mobilité sociale intergénérationnelle", "Changement de position sociale d’un individu par rapport à celle de ses parents. À ne pas confondre avec la mobilité géographique ou professionnelle."],
-      ["Mobilité intragénérationnelle", "Changement de position sociale d’un même individu au cours de sa vie active."],
-      ["Table de destinée", "Se lit en ligne : que deviennent les enfants d’une même origine sociale ? (« Sur 100 enfants de cadres, x sont devenus cadres. »)"],
-      ["Table de recrutement", "Se lit en colonne : d’où viennent les membres d’une même catégorie ? (« Sur 100 cadres, x sont enfants de cadres. »)"],
-      ["Mobilité observée / structurelle", "Observée : l’ensemble des changements mesurés dans la table. Structurelle : la part imposée par l’évolution des emplois (moins d’agriculteurs, plus de cadres)."],
-      ["Fluidité sociale", "Égalité des chances d’accès aux positions sociales, indépendamment des changements de structure. On la mesure avec les rapports de chances relatives."],
-      ["Déclassement", "Occuper une position sociale inférieure à celle de ses parents (déclassement intergénérationnel) ou à ce que permet son diplôme."],
-      ["Facteurs de la mobilité sociale", "Évolution de la structure socioprofessionnelle, niveau de formation, ressources et configurations familiales (capitaux, taille de la fratrie, famille monoparentale…)."],
-      ["Limites des tables de mobilité", "Elles comparent surtout aux pères, figent les catégories dans le temps et ne voient pas la mobilité à l’intérieur d’une même PCS."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que la mobilité observée ne se réduit pas à la fluidité sociale." },
-      { type: "dissert", texte: "Comment expliquer la mobilité sociale en France ?" }
-    ] },
-  { id: "ses-travail", mat: "ses", groupe: "Sociologie et science politique", bac: true, court: "Travail et emploi",
-    titre: "Quelles mutations du travail et de l’emploi ?",
-    cartes: [
-      ["Travail, emploi, statut", "Travail : activité de production de biens et services. Emploi : travail déclaré et rémunéré. Statut d’emploi : salarié (contrat de travail) ou non-salarié (indépendant)."],
-      ["Frontières emploi / chômage / inactivité", "Elles deviennent floues : halo autour du chômage, sous-emploi, contrats courts, temps partiel subi, micro-entrepreneurs."],
-      ["Qualité de l’emploi", "Ses descripteurs : conditions de travail, niveau de salaire, sécurité économique, horizon de carrière, potentiel de formation, variété des tâches."],
-      ["Taylorisme", "Organisation scientifique du travail : division horizontale (tâches parcellisées) et verticale (conception séparée de l’exécution), chronométrage, intensification du travail."],
-      ["Post-taylorisme", "Organisations plus flexibles : polyvalence, recomposition des tâches, autonomie, management participatif, flux tendu. Effets ambivalents : plus d’autonomie mais aussi plus de pression."],
-      ["Numérique et travail", "Il brouille les frontières travail / hors travail (télétravail, connexion permanente), transforme les relations d’emploi (plateformes) et accroît le risque de polarisation des emplois."],
-      ["Polarisation des emplois", "Hausse des emplois très qualifiés et des emplois peu qualifiés, recul des emplois intermédiaires aux tâches routinières, plus faciles à automatiser."],
-      ["Travail et intégration sociale", "Le travail intègre (revenu, droits sociaux, liens sociaux, identité). Précarisation, chômage élevé et emplois de mauvaise qualité affaiblissent ce pouvoir intégrateur."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que le numérique brouille les frontières du travail." },
-      { type: "dissert", texte: "Le travail est-il encore un facteur d’intégration sociale ?" }
-    ] },
-  { id: "ses-engagement", mat: "ses", groupe: "Sociologie et science politique", bac: true, court: "Engagement politique",
-    titre: "Comment expliquer l’engagement politique dans les sociétés démocratiques ?",
-    cartes: [
-      ["Formes de l’engagement politique", "Vote, militantisme (parti, syndicat), engagement associatif, consommation engagée (boycott, buycott), manifestations, pétitions."],
-      ["Paradoxe de l’action collective (Olson)", "Un individu rationnel a intérêt à ne pas participer (cela lui coûte) tout en profitant du résultat obtenu par les autres : c’est le comportement de passager clandestin."],
-      ["Incitations sélectives", "Avantages réservés à ceux qui participent (services, protection, informations) ou sanctions pour ceux qui ne participent pas. Elles aident à dépasser le paradoxe d’Olson."],
-      ["Rétributions symboliques", "Gains non matériels de l’engagement : reconnaissance, sociabilité, estime de soi, sentiment d’être utile."],
-      ["Structure des opportunités politiques", "Contexte plus ou moins favorable à la mobilisation : ouverture du système politique, alliés possibles, degré de répression."],
-      ["Variables sociodémographiques de l’engagement", "Catégorie sociale, diplôme, âge et génération, sexe. Exemple : les plus diplômés votent et militent davantage."],
-      ["Répertoire d’action collective (Tilly)", "Ensemble des moyens d’action disponibles à une époque (grève, manifestation, pétition, boycott, actions en ligne). Il change avec le temps."],
-      ["Transformations de l’action collective", "Moins de conflits du travail, plus de mobilisations sur de nouveaux enjeux (environnement, luttes contre les discriminations) portées par des associations et des collectifs."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que les incitations sélectives permettent de dépasser le paradoxe de l’action collective." },
-      { type: "dissert", texte: "Comment expliquer l’engagement politique dans les sociétés démocratiques ?" }
-    ] },
-  { id: "ses-justice", mat: "ses", groupe: "Regards croisés", bac: false, court: "Justice sociale",
-    titre: "Quelles inégalités sont compatibles avec les différentes conceptions de la justice sociale ?",
-    cartes: [
-      ["Égalité des droits, des chances, des situations", "Droits : les mêmes droits pour tous. Chances : la même probabilité d’accéder aux positions sociales, quelle que soit l’origine. Situations : des conditions de vie plus proches."],
-      ["Utilitarisme", "Conception de la justice qui cherche à maximiser le bien-être total de la société, même si certains y perdent (Bentham, Mill)."],
-      ["Libertarisme", "Conception (Nozick) selon laquelle est juste ce qui respecte les libertés et la propriété : l’État doit être minimal et ne pas redistribuer."],
-      ["Égalitarisme libéral (Rawls)", "Les inégalités sont acceptables si elles profitent aux plus défavorisés (principe de différence) et si les positions sont ouvertes à tous (égalité équitable des chances). Idée du « voile d’ignorance »."],
-      ["Outils de la justice sociale", "Fiscalité (impôts progressifs), protection sociale, services collectifs (école, santé), lutte contre les discriminations."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Distinguez égalité des chances et égalité des situations." }
-    ] },
-  { id: "ses-environnement", mat: "ses", groupe: "Regards croisés", bac: true, court: "Action publique et environnement",
-    titre: "Quelle action publique pour l’environnement ?",
-    cartes: [
-      ["Problème public", "Situation jugée problématique qui devient un enjeu pour les pouvoirs publics grâce à des acteurs (ONG, experts, partis, mouvements citoyens, médias) : c’est la mise à l’agenda."],
-      ["Acteurs de la question environnementale", "Pouvoirs publics, ONG, entreprises, experts (comme le GIEC), partis politiques, mouvements citoyens. Ils coopèrent mais entrent aussi en conflit."],
-      ["Échelles de l’action publique", "Locale (communes), nationale, européenne (marché carbone de l’UE), mondiale (COP, accord de Paris de 2015). Elles s’articulent entre elles."],
-      ["Externalité négative", "Effet négatif de l’activité d’un agent sur d’autres, sans compensation monétaire (ex. pollution). Le marché ne la prend pas en compte : les pouvoirs publics doivent intervenir."],
-      ["Réglementation", "Normes, interdictions, obligations (ex. normes d’émission des véhicules). Avantage : efficace et simple à comprendre. Limites : rigide, coûteuse à contrôler, n’incite pas à faire mieux que la norme."],
-      ["Taxation (taxe carbone)", "Faire payer au pollueur le coût de la pollution (principe pollueur-payeur) pour l’inciter à réduire ses émissions. Limites : impopulaire et pèse plus sur les ménages modestes."],
-      ["Marché de quotas d’émission", "Les pouvoirs publics fixent un plafond d’émissions et distribuent ou vendent des droits à polluer échangeables ; leur prix se fixe sur le marché. Limite : un prix trop bas n’incite pas."],
-      ["Subvention à l’innovation verte", "Aide publique pour développer et diffuser des technologies moins polluantes (recherche, bonus écologique). Limite : coûteuse pour les finances publiques."],
-      ["Bien commun et passager clandestin", "Le climat est un bien commun mondial : chacun a intérêt à laisser les autres faire les efforts. Les négociations sont aussi freinées par les inégalités de développement entre pays."]
-    ],
-    sujets: [
-      { type: "ec1", texte: "Montrez que la taxation et le marché de quotas d’émission sont deux instruments de lutte contre le changement climatique." },
-      { type: "dissert", texte: "Comment les pouvoirs publics peuvent-ils lutter contre le changement climatique ?" }
-    ] },
-
   /* ---------------- HGGSP ---------------- */
   { id: "hg-t1", mat: "hggsp", groupe: "Thème 1 · De nouveaux espaces de conquête", bac: false, court: "Espaces de conquête (T1)",
     titre: "Thème 1 · De nouveaux espaces de conquête (océans et espace)",
@@ -1134,7 +895,7 @@ const CHAPITRES = [
   { id: "go-oral", mat: "go", groupe: "Grand oral", bac: true, court: "Grand oral", titre: "Le grand oral",
     cartes: [
       ["Déroulé du grand oral (2027)", "20 min de préparation, puis 20 min devant deux professeurs : 10 min de présentation, debout, puis 10 min d’échange avec le jury."],
-      ["Tes deux questions", "Deux questions préparées avec tes professeurs, qui couvrent tes deux spécialités (SES et HGGSP, séparément ou ensemble). Le jury en choisit une."],
+      ["Tes deux questions", "Deux questions préparées avec tes professeurs, qui couvrent tes deux spécialités (HGGSP et ton autre spécialité, séparément ou ensemble). Le jury en choisit une."],
       ["Ce que le jury évalue", "La solidité de tes connaissances, ta capacité à argumenter, la clarté de ta parole et ton engagement dans ce que tu dis."],
       ["Coefficient du grand oral", "8 en voie générale à partir de 2027 (10 avant) : autant que la philo. Il ne se rattrape pas à l’oral de contrôle."],
       ["Le projet d’orientation", "L’échange peut porter sur ton projet après le bac : prépare 2 ou 3 phrases claires sur ce que tu veux faire et pourquoi."]
@@ -1228,7 +989,7 @@ const DEFAUTS = {
   prenom: "",
   objectif: 45,
   moyennePrecedente: 9,
-  epreuves: { philo: true, ses: true, hggsp: true, go: true },
+  epreuves: { philo: true, hggsp: true, go: true },
   lva: "LV A", lvb: "LV B",
   questionsGO: ["", ""],
   mot: { texte: "", date: null },
@@ -1573,7 +1334,7 @@ function toutesCartes() {
   return CARTES_DEPART.concat(perso);
 }
 const cartesDuChap = (chapId) => toutesCartes().filter((c) => c.chap === chapId);
-const epreuveActive = (mat) => S.config.epreuves[mat] !== false;
+const epreuveActive = (mat) => !!MATIERES[mat] && S.config.epreuves[mat] !== false;
 function cartesDues() {
   const auj = todayKey();
   return toutesCartes()
@@ -1646,7 +1407,7 @@ const TIKTOK_LIB = Object.fromEntries(TIKTOK);
 
 /* ---------- Notes ---------- */
 const MATIERES_NOTES = () => [
-  ["ses", "SES"], ["hggsp", "HGGSP"], ["philo", "Philosophie"], ["hg", "Histoire-géo"], ["emc", "EMC"],
+  ["hggsp", "HGGSP"], ["spe2", "Autre spécialité"], ["philo", "Philosophie"], ["hg", "Histoire-géo"], ["emc", "EMC"],
   ["lva", S.config.lva || "LV A"], ["lvb", S.config.lvb || "LV B"], ["es", "Enseignement scientifique"], ["eps", "EPS"], ["autre", "Autre"]
 ];
 const nomMatiereNote = (m) => (MATIERES_NOTES().find(([k]) => k === m) || [m, m])[1];
@@ -1676,7 +1437,7 @@ function ajouterErreur(e) {
 
 /* ---------- Choix du chapitre et plan du soir ---------- */
 function poidsMatiere(mat) {
-  if (mat === "ses" || mat === "hggsp") return 1;
+  if (mat === "hggsp") return 1;
   if (mat === "philo") return 0.6;
   if (mat === "go") { const mois = new Date().getMonth(); return (mois >= 2 && mois <= 5) ? 0.55 : 0.15; }
   return 0.3;
@@ -1715,7 +1476,7 @@ function changerChapitreDuSoir() {
   planifierRendu();
 }
 function typeExercicePour(mat) {
-  return { ses: "ses-ec1", hggsp: "hggsp-dissert", philo: "philo-dissert", go: "go-jury" }[mat];
+  return { hggsp: "hggsp-dissert", philo: "philo-dissert", go: "go-jury" }[mat];
 }
 const POURQUOI = {
   cartes: "Se tester fait retenir bien plus que relire : c’est l’effet test.",
@@ -1752,7 +1513,7 @@ function planDuSoir() {
     } else {
       const a = Math.round(principal * 0.35);
       etapes.push({ type: "explique", chap: ch.id, minutes: a, titre: "Explique-le avec tes mots", detail: nom });
-      etapes.push({ type: "exercice", chap: ch.id, exo: ch.mat === "ses" ? "ses-dissert" : typeExercicePour(ch.mat), minutes: principal - a, titre: "Exercice type bac", detail: nom });
+      etapes.push({ type: "exercice", chap: ch.id, exo: typeExercicePour(ch.mat), minutes: principal - a, titre: "Exercice type bac", detail: nom });
     }
   }
   if (tErr) etapes.push({ type: "erreurs", minutes: tErr, titre: "Relire tes erreurs", detail: pluriel(err, "erreur") + " à relire" });
@@ -1957,7 +1718,7 @@ Réponds uniquement avec un objet JSON valide : {"sujet":"...","attendus":["..."
     if (avecIA && S.ia) {
       vider(zone).append(chargement("Claude joue le jury…"));
       try {
-        const r = await demanderJSON(`Tu es membre du jury du grand oral du bac général 2027 (spécialités SES et HGGSP). Le candidat présente la question : « ${question} ». Pose 6 questions que poserait un jury bienveillant mais exigeant pendant l’échange de 10 minutes : précision des notions, exemples, limites, liens entre les spécialités, et une question sur son projet après le bac.
+        const r = await demanderJSON(`Tu es membre du jury du grand oral du bac général 2027 (spécialité HGGSP et une autre spécialité). Le candidat présente la question : « ${question} ». Pose 6 questions que poserait un jury bienveillant mais exigeant pendant l’échange de 10 minutes : précision des notions, exemples, limites, liens entre les spécialités, et une question sur son projet après le bac.
 Réponds uniquement avec un objet JSON valide : {"questions":["...","..."]}`);
         if (Array.isArray(r.questions) && r.questions.length) questions = r.questions.map(String).slice(0, 8);
       } catch (e) { toast(messageErreurIA(e)); }
@@ -1974,7 +1735,7 @@ Réponds uniquement avec un objet JSON valide : {"questions":["...","..."]}`);
     const docZone = x.besoinDoc ? h("label", { class: "champ" }, x.mat === "philo" ? "Le texte à expliquer" : "Le document et sa consigne",
       h("span", { class: "aide" }, "Recopie-le ou colle-le (avec l’auteur et la date)."),
       h("textarea", { id: "doc-exo", value: etat.document, oninput: (e) => { etat.document = e.target.value; } })) : null;
-    const methode = METHODES.find((m) => m.mat === ch.mat && (typeId.includes("dissert") ? m.id.includes("dissert") : typeId.includes("etude") ? m.id.includes("etude") : typeId.includes("explication") ? m.id.includes("texte") : typeId === "ses-ec1" ? m.id === "m-ses-ec" : m.id === "m-go"));
+    const methode = METHODES.find((m) => m.mat === ch.mat && (typeId.includes("dissert") ? m.id.includes("dissert") : typeId.includes("etude") ? m.id.includes("etude") : typeId.includes("explication") ? m.id.includes("texte") : m.id === "m-go"));
     vider(zone).append(
       h("div", { class: "sujet" }, h("div", { class: "petit" }, `${MATIERES[ch.mat].nom} · ${x.nom} · environ ${x.duree} min`), h("div", { class: "t" }, sujet.texte)),
       sujet.questionsJury ? h("div", { class: "carte" }, h("h3", { class: "h2" }, "Les questions du jury"), h("ol", { style: "margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px" }, sujet.questionsJury.map((q) => h("li", null, q)))) : null,
@@ -2109,7 +1870,7 @@ const NIVEAUX_EXPLIQUE = ["À côté", "Partiel", "Bien", "Parfait"];
 
 /* ---------- Minuteur concentration ---------- */
 function actMinuteur(zone, p, ctx) {
-  let duree = p.duree || 25, mat = p.mat || "ses", libelle = "";
+  let duree = p.duree || 25, mat = p.mat && MATIERES[p.mat] ? p.mat : "hggsp", libelle = "";
   let verrou = null, inter = null;
   const reglage = () => {
     vider(zone).append(
@@ -2117,7 +1878,7 @@ function actMinuteur(zone, p, ctx) {
       h("label", { class: "champ" }, "Durée"),
       choixUnique([[15, "15 min"], [25, "25 min"], [45, "45 min"], [60, "1 h"]], duree, (v) => { duree = Number(v); }),
       h("label", { class: "champ" }, "Matière", h("select", { id: "min-mat", onchange: (e) => { mat = e.target.value; } }, Object.values(MATIERES).map((m) => h("option", { value: m.id, selected: m.id === mat }, m.long)))),
-      h("label", { class: "champ" }, "Sur quoi tu travailles ?", h("input", { type: "text", id: "min-lib", placeholder: "ex. fiche sur la mobilité sociale", oninput: (e) => { libelle = e.target.value; } })),
+      h("label", { class: "champ" }, "Sur quoi tu travailles ?", h("input", { type: "text", id: "min-lib", placeholder: "ex. fiche sur le patrimoine", oninput: (e) => { libelle = e.target.value; } })),
       bandeau("info", "Si l’écran se met en veille, le chrono se met en pause. À ton retour, l’appli te demande si tu travaillais : réponds honnêtement."),
       h("button", { class: "btn grand primaire", type: "button", onclick: lancer }, icone("lecture"), "Lancer le chrono"));
   };
@@ -2532,7 +2293,7 @@ function vueReviser() {
     h("div", { class: "pile" }, METHODES.filter((m) => epreuveActive(m.mat)).map((m) => h("button", { class: "btn", type: "button", style: "justify-content:space-between", onclick: () => ouvrirMethode(m) }, h("span", null, m.titre), icone("fleche"))))));
 
   /* Chapitres */
-  const filtres = [["tous", "Tout"], ["ses", "SES"], ["hggsp", "HGGSP"], ["philo", "Philo"], ["go", "Grand oral"]].filter(([k]) => k === "tous" || epreuveActive(k));
+  const filtres = [["tous", "Tout"], ["hggsp", "HGGSP"], ["philo", "Philo"], ["go", "Grand oral"]].filter(([k]) => k === "tous" || epreuveActive(k));
   const liste = h("div", { class: "liste-chap" });
   let groupe = null;
   for (const c of CHAPITRES) {
@@ -2649,7 +2410,7 @@ function formCarte(chapId, apres) {
 }
 function formNote(existante) {
   ouvrirFeuille({ titre: existante ? "Modifier la note" : "Ajouter une note", construire: (f) => {
-    const n = Object.assign({ date: todayKey(), mat: "ses", valeur: "", sur: 20, coef: 1, type: "DS", commentaire: "" }, existante || {});
+    const n = Object.assign({ date: todayKey(), mat: "hggsp", valeur: "", sur: 20, coef: 1, type: "DS", commentaire: "" }, existante || {});
     f.corps.append(
       h("label", { class: "champ" }, "Matière", h("select", { id: "n-mat", onchange: (e) => { n.mat = e.target.value; } }, MATIERES_NOTES().map(([k, lab]) => h("option", { value: k, selected: k === n.mat }, lab)))),
       h("div", { class: "rangee etire" },
@@ -2672,7 +2433,7 @@ function formNote(existante) {
 }
 function formErreur() {
   ouvrirFeuille({ titre: "Noter une erreur", construire: (f) => {
-    const e = { mat: "ses", chap: "", type: "cours", description: "", aRetenir: "" };
+    const e = { mat: "hggsp", chap: "", type: "cours", description: "", aRetenir: "" };
     const selChap = h("select", { id: "e-chap", onchange: (ev) => { e.chap = ev.target.value; } });
     const majChaps = () => { vider(selChap).append(h("option", { value: "" }, "— Aucun en particulier —"), CHAPITRES.filter((c) => c.mat === e.mat).map((c) => h("option", { value: c.id }, c.court))); e.chap = ""; };
     majChaps();
@@ -2681,8 +2442,8 @@ function formErreur() {
       h("label", { class: "champ" }, "Matière", h("select", { id: "e-mat", onchange: (ev) => { e.mat = ev.target.value; majChaps(); } }, Object.values(MATIERES).map((m) => h("option", { value: m.id }, m.long)))),
       h("label", { class: "champ" }, "Chapitre", selChap),
       h("label", { class: "champ" }, "Type d’erreur", h("select", { id: "e-type", onchange: (ev) => { e.type = ev.target.value; } }, ERREUR_TYPES.map((t) => h("option", { value: t.id }, t.nom)))),
-      h("label", { class: "champ" }, "Ce qui n’allait pas", h("textarea", { id: "e-desc", style: "min-height:90px", placeholder: "ex. J’ai confondu chômage structurel et conjoncturel", oninput: (ev) => { e.description = ev.target.value; } })),
-      h("label", { class: "champ" }, "Ce que je dois retenir", h("textarea", { id: "e-ret", style: "min-height:90px", placeholder: "ex. Structurel = durable, lié au marché du travail ; conjoncturel = lié au ralentissement de l’activité", oninput: (ev) => { e.aRetenir = ev.target.value; } })),
+      h("label", { class: "champ" }, "Ce qui n’allait pas", h("textarea", { id: "e-desc", style: "min-height:90px", placeholder: "ex. J’ai confondu patrimoine matériel et immatériel", oninput: (ev) => { e.description = ev.target.value; } })),
+      h("label", { class: "champ" }, "Ce que je dois retenir", h("textarea", { id: "e-ret", style: "min-height:90px", placeholder: "ex. Matériel = monuments, objets ; immatériel = savoir-faire, traditions (convention de l’UNESCO de 2003)", oninput: (ev) => { e.aRetenir = ev.target.value; } })),
       h("button", { class: "btn grand primaire", type: "button", onclick: () => {
         if (!e.description.trim()) { toast("Décris l’erreur en une phrase."); return; }
         ajouterErreur({ ...e, description: e.description.trim(), aRetenir: e.aRetenir.trim(), chap: e.chap || null });
@@ -2754,7 +2515,7 @@ function vueProgres() {
   const notes = notesTriees().slice().reverse();
   grille.append(h("section", { class: "carte", "aria-labelledby": "t-notes" },
     h("div", { class: "carte-titre" }, h("h2", { id: "t-notes" }, "Notes des épreuves du bac"), h("button", { class: "btn petit-btn", type: "button", onclick: () => formNote() }, icone("plus"), "Ajouter")),
-    h("div", { class: "graphe", id: "g-notes", role: "img", "aria-label": "Évolution des notes de SES, HGGSP et philosophie" }),
+    h("div", { class: "graphe", id: "g-notes", role: "img", "aria-label": "Évolution des notes de HGGSP et de philosophie" }),
     h("div", { class: "legende", id: "leg-notes" }),
     notes.length ? h("details", { class: "repli" }, h("summary", null, `Toutes les notes (${notes.length})`),
       h("div", { class: "tab-zone" }, h("table", { class: "tab" }, h("thead", null, h("tr", null, h("th", null, "Date"), h("th", null, "Matière"), h("th", null, "Type"), h("th", { style: "text-align:right" }, "Note"), h("th", { style: "text-align:right" }, "Coef."))),
@@ -2774,7 +2535,7 @@ function vueProgres() {
   grille.append(h("section", { class: "carte", "aria-labelledby": "t-chap" },
     h("div", { class: "carte-titre" }, h("h2", { id: "t-chap" }, "Où il en est, chapitre par chapitre")),
     h("div", { class: "legende" }, [1, 2, 3, 0].map((m) => puceMaitrise(m))),
-    ...["ses", "hggsp", "philo"].filter(epreuveActive).map((mat) => h("div", { class: "pile", style: "gap:6px" },
+    ...["hggsp", "philo"].filter(epreuveActive).map((mat) => h("div", { class: "pile", style: "gap:6px" },
       h("b", null, MATIERES[mat].long),
       h("div", { class: "chips-maitrise" }, CHAPITRES.filter((c) => c.mat === mat).map((c) => h("button", { class: `chip-m m${maitriseDe(c.id)}${c.bac ? "" : " hors"}`, type: "button", title: c.titre + (c.bac ? "" : " (hors épreuve 2027)"), onclick: () => ouvrirChapitre(c.id) }, h("span", { class: "pt" }), c.court.replace(/^T\d · /, "")))))),
     h("p", { class: "petit" }, "Bordure en pointillés : hors épreuve écrite 2027.")));
@@ -2886,9 +2647,9 @@ function grapheMinutes(el) {
 function grapheNotes(el) {
   vider(el);
   const leg = document.getElementById("leg-notes"); if (leg) vider(leg);
-  const mats = ["ses", "hggsp", "philo"].filter((k) => epreuveActive(k));
+  const mats = ["hggsp", "philo"].filter((k) => epreuveActive(k));
   const notes = notesTriees().filter((n) => mats.includes(n.mat));
-  if (!notes.length) { el.append(h("div", { class: "vide" }, icone("note"), h("p", null, "Ajoute tes notes de SES, HGGSP et philo : leur évolution apparaîtra ici."))); return; }
+  if (!notes.length) { el.append(h("div", { class: "vide" }, icone("note"), h("p", null, "Ajoute tes notes de HGGSP et de philo : leur évolution apparaîtra ici."))); return; }
   const W = Math.max(300, el.clientWidth || 500), H = 210;
   const m = { l: 30, r: 64, t: 14, b: 26 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
@@ -2971,11 +2732,11 @@ function vuePlus() {
       h("input", { type: "checkbox", checked: c.epreuves[m.id] !== false, onchange: (e) => majConfig({ epreuves: Object.assign({}, c.epreuves, { [m.id]: e.target.checked }) }) }),
       h("span", null, h("b", null, `${m.long} · coef. ${m.coef}`), h("span", { class: "petit", style: "display:block" }, m.epreuve))))),
     h("p", { class: "petit" }, actives.length ? `Révisions proposées : ${actives.join(", ")}.` : "Aucune épreuve cochée."),
-    bandeau("info", "SES et HGGSP comptent 16 chacune : 32 % de la note finale du bac, plus que la philo et le grand oral réunis. Les cours de terminale restent importants pour les bulletins et Parcoursup.")));
+    bandeau("info", "Chaque spécialité compte 16 : à elles deux, 32 % de la note finale du bac, plus que la philo et le grand oral réunis. Les cours de terminale restent importants pour les bulletins et Parcoursup.")));
 
   const qs = c.questionsGO || [];
   out.push(h("section", { class: "carte", "aria-labelledby": "t-go" }, h("h2", { id: "t-go", class: "h2" }, "Grand oral : mes deux questions"),
-    h("p", { class: "sous" }, "Elles doivent couvrir tes deux spécialités (SES et HGGSP, séparément ou ensemble). Le jury en choisira une."),
+    h("p", { class: "sous" }, "Elles doivent couvrir tes deux spécialités (HGGSP et ton autre spécialité, séparément ou ensemble). Le jury en choisira une."),
     h("ol", { style: "margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px" }, [0, 1].map((k) => h("li", null, qs[k] ? qs[k] : h("span", { class: "sous" }, "Pas encore écrite")))),
     h("button", { class: "btn", type: "button", onclick: formGO }, icone("stylo"), "Écrire mes questions")));
 
@@ -3030,7 +2791,7 @@ function formGO() {
   ouvrirFeuille({ titre: "Mes questions de grand oral", construire: (f) => {
     const qs = [...(S.config.questionsGO || ["", ""])];
     f.corps.append(
-      h("p", { class: "sous" }, "Une bonne question est précise, problématisée et liée au programme. Exemple : « La taxe carbone peut-elle être juste socialement ? » (SES)."),
+      h("p", { class: "sous" }, "Une bonne question est précise, problématisée et liée au programme. Exemple : « Le patrimoine est-il un outil de puissance pour les États ? » (HGGSP)."),
       [0, 1].map((k) => h("label", { class: "champ" }, `Question ${k + 1}`, h("textarea", { id: `go-${k}`, style: "min-height:80px", value: qs[k] || "", oninput: (e) => { qs[k] = e.target.value; } }))),
       h("button", { class: "btn grand primaire", type: "button", onclick: () => { majConfig({ questionsGO: qs.map((q) => (q || "").trim().slice(0, 300)) }); f.fermer(true); toast("Questions enregistrées."); } }, "Enregistrer"));
   } });
@@ -3039,7 +2800,7 @@ function formEcheance() {
   ouvrirFeuille({ titre: "Ajouter une date", construire: (f) => {
     const e = { titre: "", date: addDays(todayKey(), 7) };
     f.corps.append(
-      h("label", { class: "champ" }, "Quoi ?", h("input", { type: "text", id: "ech-t", placeholder: "ex. Bac blanc de SES", oninput: (ev) => { e.titre = ev.target.value; } })),
+      h("label", { class: "champ" }, "Quoi ?", h("input", { type: "text", id: "ech-t", placeholder: "ex. Bac blanc de HGGSP", oninput: (ev) => { e.titre = ev.target.value; } })),
       h("label", { class: "champ" }, "Quand ?", h("input", { type: "date", id: "ech-d", value: e.date, oninput: (ev) => { e.date = ev.target.value; } })),
       h("button", { class: "btn grand primaire", type: "button", onclick: () => {
         if (!e.titre.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(e.date)) { toast("Indique un titre et une date."); return; }

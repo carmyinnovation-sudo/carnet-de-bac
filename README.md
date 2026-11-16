@@ -1,6 +1,6 @@
 # Carnet de bac 2027
 
-Web app de révision pour la terminale (SES, HGGSP, philosophie, grand oral), à installer sur l'écran d'accueil d'un téléphone.
+Web app de révision pour la terminale (HGGSP, philosophie, grand oral), à installer sur l'écran d'accueil d'un téléphone.
 
 - **Ce soir** : un plan de 45 minutes, le compte à rebours jusqu'au bac et la série de soirées réussies.
 - **Réviser** : cartes mémoire avec répétition espacée, quiz, exercices type bac avec auto-correction guidée, « explique-le avec tes mots », minuteur et carnet d'erreurs.

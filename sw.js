@@ -1,6 +1,6 @@
 /* Carnet de bac : met l'appli en cache pour qu'elle s'ouvre même sans réseau.
    Les données (Supabase) ne passent jamais par ce cache. */
-const CACHE = "carnet-v1";
+const CACHE = "carnet-v2";
 const FICHIERS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon.png"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FICHIERS)).then(() => self.skipWaiting()));
