@@ -351,6 +351,14 @@ details.repli ol, details.repli ul { margin: 6px 0 0; padding-left: 20px; displa
 .qcm button { text-align: left; min-height: 52px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--ligne-forte); background: var(--feuille); cursor: pointer; line-height: 1.4; }
 .qcm button.bon { border-color: var(--vert); background: var(--vert-doux); }
 .qcm button.mauvais { border-color: var(--rouge); background: var(--rouge-doux); }
+.qcm.dates { display: grid; grid-template-columns: 1fr 1fr; }
+.qcm.dates button { text-align: center; font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.flash.quiz-q { min-height: 150px; }
+.flash.quiz-q .q { font-size: 1.2rem; }
+input.saisie-quiz { font-size: 1.35rem; font-weight: 700; text-align: center; min-height: 56px; }
+input.saisie-quiz.bon { border-color: var(--vert); background: var(--vert-doux); }
+input.saisie-quiz.mauvais { border-color: var(--rouge); background: var(--rouge-doux); }
+.retour-q { line-height: 1.5; }
 
 .minuteur { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 8px 0; }
 .minuteur .grand-anneau { width: min(260px, 70vw); aspect-ratio: 1; position: relative; }
@@ -904,6 +912,359 @@ const CHAPITRES = [
 ];
 
 /* ============================================================
+   BANQUE DE QUIZ : questions à pièges
+   t : "d" = une année · "n" = un nom (QCM, puis à écrire) · "c" = choix (toujours QCM)
+   q : question · r : bonne réponse · p : pièges · e : explication montrée après la réponse
+   ok : autres réponses acceptées quand il faut écrire (orthographes, prénom + nom)
+   Pièges : dates proches, acteurs du même camp, notions qui se ressemblent.
+   Règle des dates : au moins 3 pièges à 5 ans ou moins de la bonne année, au plus 1 plus loin.
+   ============================================================ */
+const QUIZ = {
+  /* ---------------- HGGSP · Thème 1 (hors épreuve 2027) ---------------- */
+  "hg-t1": [
+    { t: "d", q: "En quelle année est signée la convention de Montego Bay sur le droit de la mer ?", r: 1982, p: [1978, 1980, 1984, 1994], e: "Signée en 1982, elle n’entre en vigueur qu’en 1994. Piège : 1994, c’est l’entrée en vigueur, pas la signature." },
+    { t: "c", q: "Jusqu’où s’étend la mer territoriale d’un État ?", r: "12 milles marins", p: ["24 milles marins", "200 milles marins", "3 milles marins"], e: "12 milles. La zone contiguë va jusqu’à 24 milles, la ZEE jusqu’à 200 milles." },
+    { t: "c", q: "Jusqu’où s’étend une zone économique exclusive (ZEE) ?", r: "200 milles marins", p: ["12 milles marins", "24 milles marins", "350 milles marins"], e: "200 milles. Jusqu’à 350 milles, c’est la limite possible du plateau continental étendu, pas la ZEE." },
+    { t: "d", q: "En quelle année l’URSS lance-t-elle Spoutnik, le premier satellite artificiel ?", r: 1957, p: [1955, 1958, 1959, 1961], e: "Octobre 1957. Les États-Unis répondent en créant la NASA en 1958." },
+    { t: "n", q: "Qui est le premier homme envoyé dans l’espace ?", r: "Gagarine", ok: ["Youri Gagarine", "Iouri Gagarine", "Gagarin", "Yuri Gagarin"], p: ["Leonov", "Armstrong", "Terechkova", "Glenn"], e: "Youri Gagarine, le 12 avril 1961. Terechkova : première femme dans l’espace (1963). Leonov : première sortie dans l’espace (1965). Armstrong : premiers pas sur la Lune." },
+    { t: "d", q: "En quelle année Apollo 11 se pose-t-il sur la Lune ?", r: 1969, p: [1967, 1968, 1970, 1972], e: "Juillet 1969. Pièges : 1968, Apollo 8 tourne autour de la Lune sans s’y poser ; 1972, dernière mission Apollo." },
+    { t: "c", q: "Lequel de ces pays n’est PAS partenaire de la Station spatiale internationale ?", r: "La Chine", p: ["Le Japon", "Le Canada", "La Russie"], e: "La Chine en est exclue : elle a construit sa propre station, Tiangong." },
+    { t: "c", q: "Grâce à quoi la France a-t-elle le 2e domaine maritime du monde ?", r: "Ses territoires d’outre-mer", p: ["Sa façade atlantique", "Ses côtes méditerranéennes", "Ses accords avec l’Union européenne"], e: "Les outre-mer (Polynésie, Nouvelle-Calédonie, Terres australes…) lui donnent l’essentiel de sa ZEE." }
+  ],
+
+  /* ---------------- HGGSP · Thème 2 ---------------- */
+  "hg-t2a": [
+    { t: "d", q: "En quelle année paraît De la guerre, le traité de Clausewitz ?", r: 1832, p: [1815, 1830, 1831, 1834], e: "1832, un an après sa mort (1831), publié par sa veuve. Piège : 1815, c’est Waterloo." },
+    { t: "n", q: "Quel officier prussien écrit que la guerre est « la continuation de la politique par d’autres moyens » ?", r: "Clausewitz", ok: ["Carl von Clausewitz", "von Clausewitz"], p: ["Jomini", "Scharnhorst", "Gneisenau", "Moltke"], e: "Carl von Clausewitz (1780-1831). Jomini, son contemporain, est l’autre grand théoricien des guerres napoléoniennes ; Scharnhorst et Gneisenau ont réformé l’armée prussienne." },
+    { t: "c", q: "Dans la « trinité » de Clausewitz, à quoi correspond le peuple ?", r: "Aux passions et à la violence", p: ["Au hasard et au talent", "À la raison politique"], e: "Peuple = passions ; armée et chef = hasard et talent ; gouvernement = raison politique, qui fixe le but de la guerre." },
+    { t: "c", q: "Dans la « trinité » de Clausewitz, quel pôle incarne la raison politique ?", r: "Le gouvernement", p: ["Le peuple", "L’armée et son chef"], e: "Le gouvernement fixe les buts : la guerre reste soumise à la politique." },
+    { t: "c", q: "Laquelle de ces guerres est une guerre interétatique ?", r: "La guerre Iran-Irak", p: ["L’insurrection irakienne après 2003", "La guerre civile syrienne", "La lutte contre Al-Qaïda"], e: "Iran-Irak : deux États, deux armées régulières. Les autres opposent des États à des groupes armés, ou des camps d’un même pays." },
+    { t: "d", q: "En quelle année commence la guerre Iran-Irak ?", r: 1980, p: [1978, 1979, 1982, 1988], e: "1980-1988. Pièges : 1979, c’est la révolution islamique en Iran ; 1988, la fin de la guerre." },
+    { t: "c", q: "Qu’est-ce qui définit une guerre asymétrique ?", r: "Des adversaires très inégaux, le plus faible évitant la bataille classique", p: ["Deux États qui s’affrontent sans déclaration de guerre", "Un conflit où un seul camp possède l’arme nucléaire", "Une guerre menée par des armées privées payées par des États"], e: "Asymétrique = inégalité de puissance : guérilla, attentats, terrorisme face à une armée régulière." },
+    { t: "d", q: "En quelle année Al-Qaïda est-elle fondée ?", r: 1988, p: [1979, 1986, 1989, 1991], e: "1988, à la fin de la guerre d’Afghanistan contre l’URSS. Pièges : 1979, l’invasion soviétique de l’Afghanistan ; 1989, le retrait soviétique." },
+    { t: "n", q: "Qui fonde Al-Qaïda ?", r: "Ben Laden", ok: ["Oussama Ben Laden", "Ousama Ben Laden", "Bin Laden", "Oussama Bin Laden", "Ben Ladin"], p: ["al-Zawahiri", "al-Baghdadi", "al-Zarqaoui"], e: "Oussama Ben Laden, tué en 2011. Al-Zawahiri lui succède ; al-Zarqaoui dirige Al-Qaïda en Irak, l’ancêtre de Daech ; al-Baghdadi devient le « calife » de Daech." },
+    { t: "n", q: "Quel chef djihadiste est proclamé « calife » de Daech ?", r: "al-Baghdadi", ok: ["Abou Bakr al-Baghdadi", "Abu Bakr al-Baghdadi", "Baghdadi"], p: ["Ben Laden", "al-Zawahiri", "al-Zarqaoui"], e: "Abou Bakr al-Baghdadi, tué en 2019. Piège : al-Zarqaoui, tué dès 2006, dirigeait Al-Qaïda en Irak." },
+    { t: "d", q: "En quelle année Daech proclame-t-il son « califat » ?", r: 2014, p: [2011, 2013, 2015, 2016], e: "Juin 2014, sur un territoire à cheval sur l’Irak et la Syrie. Pièges : 2011, le début de la guerre en Syrie ; 2015, les attentats de Paris." },
+    { t: "d", q: "En quelle année Daech perd-il sa dernière poche de territoire, à Baghouz en Syrie ?", r: 2019, p: [2016, 2017, 2018, 2020], e: "Mars 2019. Piège : 2017, c’est la chute de Mossoul et de Raqqa, ses deux grandes villes." },
+    { t: "c", q: "Qu’est-ce qui distingue Al-Qaïda de Daech ?", r: "Al-Qaïda est un réseau sans territoire ; Daech a contrôlé un territoire", p: ["Al-Qaïda est chiite ; Daech est sunnite", "Al-Qaïda agit au Moyen-Orient ; Daech dans le monde entier", "Al-Qaïda refuse les attentats ; Daech les pratique"], e: "Les deux sont djihadistes sunnites et commettent des attentats. La différence clé : Daech a tenu un « califat » avec une administration, de 2014 à 2019." },
+    { t: "d", q: "En quelle année commence l’invasion russe à grande échelle de l’Ukraine ?", r: 2022, p: [2014, 2020, 2021, 2023], e: "24 février 2022. Piège : 2014, c’est l’annexion de la Crimée et le début de la guerre dans le Donbass." },
+    { t: "c", q: "Un acteur transnational, c’est…", r: "Un acteur non étatique qui agit par-delà les frontières", p: ["Une organisation qui réunit plusieurs États", "Une institution placée au-dessus des États", "Un État qui intervient hors de ses frontières"], e: "Transnational : ONG, firme, réseau terroriste. Ne confonds pas avec international (entre États, comme l’ONU) ni supranational (au-dessus des États, comme l’UE dans certains domaines)." }
+  ],
+  "hg-t2b": [
+    { t: "d", q: "En quelle année les traités de Westphalie mettent-ils fin à la guerre de Trente Ans ?", r: 1648, p: [1643, 1645, 1650, 1659], e: "1648. La guerre avait commencé en 1618. Piège : 1659, c’est la paix des Pyrénées entre la France et l’Espagne." },
+    { t: "c", q: "Sur quoi repose l’ordre fondé par les traités de Westphalie ?", r: "La souveraineté des États et l’équilibre des puissances", p: ["La sécurité collective garantie par une organisation", "L’autorité du pape sur les rois catholiques", "La domination de l’empereur sur l’Europe"], e: "Le « système westphalien » : des États souverains qui s’équilibrent. La sécurité collective n’arrive qu’en 1919 avec la SDN." },
+    { t: "c", q: "La sécurité collective, c’est…", r: "Une agression contre un État concerne tous les autres", p: ["Les puissances s’équilibrent pour qu’aucune ne domine", "Chaque État assure seul sa défense par la dissuasion", "Des alliés s’unissent contre un ennemi désigné d’avance"], e: "Sécurité collective (SDN, puis ONU) ≠ équilibre des puissances (Westphalie) ≠ défense collective d’une alliance comme l’OTAN, tournée contre un adversaire extérieur." },
+    { t: "d", q: "En quelle année est créée la Société des Nations (SDN) ?", r: 1919, ok: [1920], p: [1917, 1918, 1921, 1925], e: "Son pacte est adopté en 1919 avec les traités de paix ; elle fonctionne à partir de 1920, à Genève. Piège : 1918, c’est l’armistice." },
+    { t: "d", q: "En quelle année est signée la Charte des Nations unies, qui crée l’ONU ?", r: 1945, p: [1944, 1946, 1947, 1948], e: "Juin 1945, à San Francisco. Piège : 1948, c’est la Déclaration universelle des droits de l’homme." },
+    { t: "c", q: "Combien de membres compte le Conseil de sécurité de l’ONU ?", r: "15, dont 5 permanents", p: ["10, dont 5 permanents", "15, dont 10 permanents", "20, dont 5 permanents"], e: "15 : 5 permanents avec droit de veto et 10 élus pour deux ans." },
+    { t: "c", q: "Lequel de ces pays est membre permanent du Conseil de sécurité ?", r: "Le Royaume-Uni", p: ["L’Allemagne", "Le Japon", "L’Inde", "Le Brésil"], e: "Les 5 permanents : États-Unis, Russie, Chine, Royaume-Uni, France. L’Allemagne, le Japon, l’Inde et le Brésil (le « G4 ») réclament un siège permanent." },
+    { t: "c", q: "Quel chapitre de la Charte de l’ONU permet d’autoriser l’usage de la force ?", r: "Le chapitre VII", p: ["Le chapitre VI", "Le chapitre V", "Le chapitre VIII"], e: "Chapitre VI : règlement pacifique des différends. Chapitre VII : sanctions et usage de la force face à une menace contre la paix." },
+    { t: "n", q: "Quel secrétaire général de l’ONU reçoit le prix Nobel de la paix avec l’organisation ?", r: "Kofi Annan", ok: ["Annan"], p: ["Boutros Boutros-Ghali", "Ban Ki-moon", "Javier Pérez de Cuéllar"], e: "Kofi Annan, diplomate ghanéen. Boutros Boutros-Ghali le précède, Ban Ki-moon lui succède." },
+    { t: "d", q: "En quelle année Kofi Annan devient-il secrétaire général de l’ONU ?", r: 1997, p: [1992, 1995, 1999, 2001], e: "1997, jusqu’en 2006. Piège : 2001, c’est son prix Nobel de la paix." },
+    { t: "d", q: "En quelle année l’ONU adopte-t-elle la « responsabilité de protéger » ?", r: 2005, p: [2001, 2003, 2006, 2011], e: "Au sommet mondial de 2005. Piège : 2011, c’est l’intervention en Libye, justifiée par ce principe." },
+    { t: "c", q: "Que permet la « responsabilité de protéger » ?", r: "D’agir si un État ne protège pas sa population de crimes de masse", p: ["D’intervenir seul chez un voisin pour protéger ses ressortissants", "D’envoyer des Casques bleus sans l’accord du Conseil de sécurité", "De défendre les frontières de tout État agressé par un autre"], e: "Génocide, crimes de guerre, nettoyage ethnique, crimes contre l’humanité : l’action passe par le Conseil de sécurité. Défendre un État agressé, c’est la sécurité collective." },
+    { t: "d", q: "En quelle année a lieu le génocide des Tutsi au Rwanda, malgré la présence de Casques bleus ?", r: 1994, p: [1992, 1993, 1995, 1996], e: "D’avril à juillet 1994. Piège : 1995, c’est Srebrenica, autre grand échec des Casques bleus." },
+    { t: "c", q: "Dans quel pays a lieu le massacre de Srebrenica ?", r: "En Bosnie", p: ["Au Kosovo", "En Croatie", "En Serbie"], e: "En Bosnie-Herzégovine : plus de 8 000 hommes et garçons bosniaques tués par les forces serbes de Bosnie en 1995, dans une « zone de sécurité » de l’ONU." }
+  ],
+  "hg-t2c": [
+    { t: "d", q: "En quelle année l’ONU vote-t-elle le plan de partage de la Palestine ?", r: 1947, p: [1945, 1946, 1948, 1949], e: "Résolution 181 du 29 novembre 1947. Piège : l’année suivante, c’est la proclamation de l’État d’Israël." },
+    { t: "d", q: "En quelle année est proclamé l’État d’Israël ?", r: 1948, p: [1946, 1947, 1949, 1956], e: "Le 14 mai 1948. Pièges : l’année d’avant, c’est le plan de partage de l’ONU ; 1949, la fin de la première guerre israélo-arabe." },
+    { t: "n", q: "Qui proclame l’indépendance de l’État d’Israël ?", r: "Ben Gourion", ok: ["David Ben Gourion", "Ben Gurion", "David Ben Gurion"], p: ["Golda Meir", "Menahem Begin", "Theodor Herzl"], e: "David Ben Gourion, premier chef du gouvernement israélien. Herzl est le fondateur du sionisme politique, à la fin du XIXe siècle." },
+    { t: "d", q: "En quelle année a lieu la guerre des Six Jours ?", r: 1967, p: [1965, 1966, 1968, 1973], e: "Juin 1967. Pièges : 1956, c’est la crise de Suez ; 1973, la guerre du Kippour." },
+    { t: "c", q: "Que demande la résolution 242 de l’ONU, après la guerre des Six Jours ?", r: "Le retrait de territoires occupés en échange de la paix", p: ["Le partage de la Palestine entre deux États", "Le retour de tous les réfugiés palestiniens", "Un statut international pour toute la Palestine"], e: "242 : « la terre contre la paix ». Le partage, c’est la résolution 181 ; le retour des réfugiés, la résolution 194." },
+    { t: "c", q: "Quels territoires Israël occupe-t-il après la guerre des Six Jours ?", r: "Cisjordanie, Jérusalem-Est, Gaza, Sinaï et Golan", p: ["Cisjordanie, Jérusalem-Est, Gaza, Sinaï et Sud-Liban", "Cisjordanie, Jérusalem-Est, Gaza, Golan et Sud-Liban", "Jérusalem-Est, Gaza, Sinaï, Golan et Sud-Liban"], e: "Le Sinaï est rendu à l’Égypte après la paix de 1979. Piège : le Sud-Liban est occupé de 1982 à 2000, pas en 1967." },
+    { t: "n", q: "Quel président égyptien signe les accords de Camp David ?", r: "Sadate", ok: ["Anouar el-Sadate", "el-Sadate", "Anouar Sadate", "Sadat", "Anwar el-Sadat"], p: ["Nasser", "Moubarak", "Néguib"], e: "Anouar el-Sadate, assassiné en 1981. Nasser l’a précédé (1956-1970), Moubarak lui succède (1981-2011)." },
+    { t: "n", q: "Quel Premier ministre israélien signe les accords de Camp David ?", r: "Begin", ok: ["Menahem Begin", "Beguin", "Menahem Beguin"], p: ["Rabin", "Golda Meir", "Shimon Peres", "Ariel Sharon"], e: "Menahem Begin (droite, Likoud). Piège : Rabin, c’est le Premier ministre des accords d’Oslo." },
+    { t: "n", q: "Quel président américain parraine les accords de Camp David ?", r: "Carter", ok: ["Jimmy Carter"], p: ["Nixon", "Ford", "Reagan", "Clinton"], e: "Jimmy Carter (1977-1981). Piège : Clinton préside la cérémonie des accords d’Oslo, à Washington." },
+    { t: "d", q: "En quelle année sont signés les accords de Camp David ?", r: 1978, p: [1973, 1977, 1979, 1980], e: "Septembre 1978. Pièges : 1977, Sadate se rend à Jérusalem ; 1979, le traité de paix israélo-égyptien est signé." },
+    { t: "d", q: "En quelle année sont signés les accords d’Oslo ?", r: 1993, p: [1987, 1990, 1991, 1992, 1996], e: "Septembre 1993, à Washington. Pièges : 1991, la conférence de Madrid lance les négociations ; 1987, la première Intifada." },
+    { t: "n", q: "Quel chef de l’OLP échange avec Rabin la poignée de main des accords d’Oslo ?", r: "Arafat", ok: ["Yasser Arafat"], p: ["Mahmoud Abbas", "Ismaël Haniyeh", "Cheikh Yassine"], e: "Yasser Arafat, chef de l’OLP jusqu’à sa mort en 2004. Mahmoud Abbas lui succède. Le cheikh Yassine et Ismaël Haniyeh sont des chefs du Hamas, hostile à Oslo." },
+    { t: "n", q: "Quel Premier ministre israélien, signataire d’Oslo, est assassiné en 1995 par un extrémiste juif ?", r: "Rabin", ok: ["Yitzhak Rabin", "Itzhak Rabin"], p: ["Shimon Peres", "Ariel Sharon", "Ehud Barak", "Netanyahou"], e: "Yitzhak Rabin, tué le 4 novembre 1995. Shimon Peres, son ministre des Affaires étrangères, avait négocié Oslo avec lui." },
+    { t: "d", q: "En quelle année commence la seconde Intifada ?", r: 2000, p: [1987, 1998, 2001, 2002], e: "Septembre 2000, après l’échec des négociations de Camp David II. Piège : 1987, c’est la première Intifada." },
+    { t: "d", q: "En quelle année l’Irak de Saddam Hussein envahit-il le Koweït ?", r: 1990, p: [1988, 1989, 1991, 1992], e: "Août 1990. Piège : l’année suivante, c’est la guerre du Golfe qui libère le Koweït." },
+    { t: "c", q: "Quelle différence entre la guerre du Golfe et la guerre d’Irak ?", r: "1991 avec mandat de l’ONU, 2003 sans mandat", p: ["1991 sans mandat de l’ONU, 2003 avec mandat", "Un mandat de l’ONU dans les deux cas", "La France participe en 2003, pas en 1991"], e: "1991 : coalition autorisée par l’ONU, France comprise. 2003 : intervention américano-britannique sans mandat, à laquelle la France s’oppose." },
+    { t: "c", q: "Quel président américain lance la guerre d’Irak ?", r: "George W. Bush, le fils", p: ["George H. W. Bush, le père", "Bill Clinton", "Barack Obama"], e: "George W. Bush (2001-2009). Son père, George H. W. Bush, dirigeait la coalition de la guerre du Golfe." },
+    { t: "d", q: "En quelle année les États-Unis et le Royaume-Uni envahissent-ils l’Irak ?", r: 2003, p: [2001, 2002, 2004, 2006], e: "Mars 2003. Piège : 2001, ce sont les attentats du 11 septembre et la guerre en Afghanistan." }
+  ],
+
+  /* ---------------- HGGSP · Thème 3 (hors épreuve 2027) ---------------- */
+  "hg-t3": [
+    { t: "c", q: "La mémoire, c’est…", r: "Le souvenir vécu ou transmis par un groupe, affectif et sélectif", p: ["Une connaissance du passé construite avec une méthode critique", "L’ensemble des archives conservées par l’État", "Une loi qui fixe la version officielle du passé"], e: "La méthode critique, c’est l’histoire. Une loi qui reconnaît officiellement un fait passé, c’est une loi mémorielle." },
+    { t: "d", q: "En quelle année commence la guerre d’Algérie ?", r: 1954, p: [1945, 1952, 1956, 1958], e: "1er novembre 1954 (« Toussaint rouge »), jusqu’en 1962. Pièges : 1945, les massacres de Sétif ; 1958, le retour de De Gaulle." },
+    { t: "d", q: "En quelle année une loi reconnaît-elle officiellement l’expression « guerre d’Algérie » ?", r: 1999, p: [1995, 1997, 2001, 2002], e: "Loi du 18 octobre 1999. Avant, on parlait d’« opérations de maintien de l’ordre » ou des « événements d’Algérie »." },
+    { t: "c", q: "Que sont les tribunaux gacaca ?", r: "Des tribunaux populaires rwandais pour les crimes du génocide", p: ["Un tribunal de l’ONU installé en Tanzanie pour le Rwanda", "Des commissions vérité et réconciliation sud-africaines", "Des tribunaux militaires chargés de juger les Hutu exilés"], e: "Gacaca : une justice de proximité au Rwanda (2005-2012). Le tribunal de l’ONU, c’est le TPIR, à Arusha (Tanzanie)." },
+    { t: "d", q: "En quelle année l’ONU crée-t-elle le Tribunal pénal international pour l’ex-Yougoslavie (TPIY) ?", r: 1993, p: [1991, 1992, 1994, 1995], e: "1993, pendant la guerre de Bosnie. Piège : 1994, c’est le tribunal pour le Rwanda (TPIR)." },
+    { t: "c", q: "Radovan Karadžić et Ratko Mladić, condamnés par le TPIY, étaient…", r: "Les chefs politique et militaire des Serbes de Bosnie", p: ["Les chefs politique et militaire des Croates de Bosnie", "Les chefs politique et militaire des Albanais du Kosovo", "Les présidents successifs de la Serbie"], e: "Tous deux condamnés pour génocide, notamment pour Srebrenica. Le président serbe Slobodan Milošević est mort en 2006, avant la fin de son procès." }
+  ],
+
+  /* ---------------- HGGSP · Thème 4 ---------------- */
+  "hg-t4a": [
+    { t: "c", q: "La patrimonialisation, c’est…", r: "Le processus par lequel une chose devient patrimoine", p: ["La transformation d’une ville en décor figé pour touristes", "Le retour d’une œuvre d’art dans son pays d’origine", "Le classement automatique de tout monument ancien"], e: "Patrimonialisation : sélection, protection, valorisation. Le décor figé, c’est la muséification ; le retour d’une œuvre, une restitution." },
+    { t: "c", q: "Lequel de ces biens relève du patrimoine culturel immatériel ?", r: "Le repas gastronomique des Français", p: ["Les climats du vignoble de Bourgogne", "Les coteaux, maisons et caves de Champagne", "Le canal du Midi"], e: "Le repas gastronomique est inscrit à l’immatériel (2010), comme le savoir-faire de la baguette (2022). Les vignobles de Bourgogne et de Champagne sont des paysages culturels : du patrimoine matériel." },
+    { t: "d", q: "En quelle année Louis-Philippe inaugure-t-il à Versailles le musée de l’Histoire de France ?", r: 1837, p: [1832, 1833, 1839, 1848], e: "1837 : un musée dédié « à toutes les gloires de la France », pour réconcilier les Français. Pièges : 1830, la révolution qui le porte au pouvoir ; 1848, sa chute." },
+    { t: "n", q: "Quel roi transforme le château de Versailles en musée de l’Histoire de France ?", r: "Louis-Philippe", ok: ["Louis-Philippe Ier", "Louis-Philippe 1er"], p: ["Louis XVIII", "Charles X", "Napoléon III"], e: "Louis-Philippe, roi des Français de 1830 à 1848. Louis XIV a construit le château ; Louis-Philippe en fait un lieu de mémoire nationale." },
+    { t: "d", q: "En quelle année l’Empire allemand est-il proclamé dans la galerie des Glaces ?", r: 1871, p: [1869, 1870, 1872, 1873], e: "Le 18 janvier 1871, après la défaite française contre la Prusse : une humiliation pour la France." },
+    { t: "d", q: "En quelle année la France fait-elle signer à l’Allemagne vaincue le traité de Versailles, dans la galerie des Glaces ?", r: 1919, p: [1917, 1918, 1920, 1921], e: "Le 28 juin 1919 : une revanche symbolique sur 1871. Piège : 1918, c’est l’armistice." },
+    { t: "n", q: "Quel ambassadeur britannique fait détacher les frises du Parthénon, au début du XIXe siècle ?", r: "Elgin", ok: ["Lord Elgin"], p: ["Lord Byron", "Lord Carnarvon", "Lord Nelson"], e: "Lord Elgin, ambassadeur auprès de l’Empire ottoman, qui contrôlait Athènes. Le poète Byron dénonçait déjà ce pillage ; Carnarvon finance la découverte de la tombe de Toutankhamon (1922)." },
+    { t: "c", q: "Où sont exposées la plupart des frises du Parthénon détachées par Elgin ?", r: "Au British Museum, à Londres", p: ["Au musée de l’Acropole, à Athènes", "Au musée du Louvre, à Paris", "Au Metropolitan Museum, à New York"], e: "Au British Museum. La Grèce réclame leur retour depuis les années 1980 et leur réserve une salle au musée de l’Acropole." },
+    { t: "c", q: "Pourquoi la Grèce réclame-t-elle les frises du Parthénon ?", r: "Elles ont quitté le pays sous domination ottomane", p: ["Le British Museum les a achetées en 2000", "L’UNESCO lui en a donné la propriété", "Elles ont été pillées en 1940 par l’Italie"], e: "Détachées entre 1801 et 1812 avec un accord contesté des autorités ottomanes, elles sont pour la Grèce un symbole national." },
+    { t: "d", q: "En quelle année l’UNESCO adopte-t-elle la convention du patrimoine mondial ?", r: 1972, p: [1968, 1970, 1975, 1978], e: "1972. Pièges : 1970, convention contre le trafic de biens culturels ; 1978, premiers sites inscrits." },
+    { t: "d", q: "En quelle année l’UNESCO adopte-t-elle la convention sur le patrimoine culturel immatériel ?", r: 2003, p: [1999, 2001, 2005, 2008], e: "2003. Piège : 2005, c’est la convention sur la diversité des expressions culturelles." },
+    { t: "c", q: "Un État qui restaure ses monuments et les fait inscrire à l’UNESCO pour améliorer son image utilise…", r: "Le soft power", p: ["Le hard power", "Le sharp power", "Le smart power"], e: "Soft power : influencer par l’attraction (Joseph Nye). Hard power : par la contrainte (armée, sanctions). Smart power : mélange des deux. Sharp power : manipulation par des régimes autoritaires." }
+  ],
+  "hg-t4b": [
+    { t: "d", q: "En quelle année les rives de la Seine, à Paris, sont-elles inscrites au patrimoine mondial ?", r: 1991, p: [1987, 1989, 1993, 1995], e: "1991. Venise est inscrite en 1987, Tombouctou en 1988." },
+    { t: "d", q: "En quelle année Notre-Dame de Paris est-elle ravagée par un incendie ?", r: 2019, p: [2017, 2018, 2020, 2021], e: "Le 15 avril 2019. Elle rouvre après cinq ans de chantier." },
+    { t: "d", q: "En quelle année Notre-Dame de Paris rouvre-t-elle après l’incendie ?", r: 2024, p: [2022, 2023, 2025, 2026], e: "Les 7 et 8 décembre 2024." },
+    { t: "d", q: "En quelle année Venise interdit-elle les grands paquebots dans son centre historique ?", r: 2021, p: [2019, 2020, 2023, 2024], e: "2021, sous la pression de l’UNESCO, qui menaçait de l’inscrire sur la liste du patrimoine en péril." },
+    { t: "d", q: "En quelle année Venise crée-t-elle une taxe d’accès pour les visiteurs à la journée ?", r: 2024, p: [2021, 2022, 2023, 2025], e: "Avril 2024. Piège : 2021, c’est l’interdiction des grands paquebots." },
+    { t: "d", q: "En quelle année des djihadistes détruisent-ils des mausolées de Tombouctou ?", r: 2012, p: [2010, 2011, 2013, 2016], e: "2012, pendant l’occupation du nord du Mali. Pièges : 2013, l’opération française Serval chasse les djihadistes ; 2016, le procès devant la CPI." },
+    { t: "n", q: "Quel tribunal condamne un djihadiste pour la destruction des mausolées de Tombouctou ?", r: "CPI", ok: ["Cour pénale internationale"], p: ["CIJ", "TPIY", "TPIR"], e: "La Cour pénale internationale juge des individus. La CIJ (Cour internationale de justice) règle les différends entre États ; TPIY et TPIR étaient des tribunaux temporaires (ex-Yougoslavie, Rwanda)." },
+    { t: "c", q: "Pourquoi le procès de la CPI sur Tombouctou est-il historique ?", r: "C’est le premier procès pour destruction de patrimoine", p: ["C’est le premier procès pour crimes contre l’humanité", "C’est le premier procès pour trafic d’antiquités", "C’est le premier procès d’un chef d’État en exercice"], e: "Ahmad al-Faqi al-Mahdi est condamné à 9 ans de prison : détruire du patrimoine est jugé comme un crime de guerre. Les crimes contre l’humanité sont jugés depuis Nuremberg." },
+    { t: "c", q: "La muséification, c’est…", r: "Figer un quartier en musée à ciel ouvert", p: ["Transformer une usine fermée en musée", "Faire entrer un objet dans le patrimoine", "Exposer des œuvres venues d’un autre pays"], e: "La muséification se fait au détriment des habitants. Une usine devenue musée, c’est une reconversion ; faire entrer un objet dans le patrimoine, une patrimonialisation." },
+    { t: "c", q: "Le tourisme culturel est « à double tranchant » parce qu’il…", r: "Finance le patrimoine mais peut l’abîmer et chasser les habitants", p: ["Protège la nature mais abîme les monuments qu’il fait connaître", "Enrichit les habitants mais appauvrit l’État qui entretient les sites", "Attire les étrangers mais fait fuir les visiteurs français"], e: "Atout : revenus, rayonnement. Menaces : surfréquentation, muséification, hausse des loyers." },
+    { t: "c", q: "À quoi sert la liste du patrimoine mondial « en péril » ?", r: "À mobiliser de l’aide pour des biens gravement menacés", p: ["À retirer des biens de la liste du patrimoine mondial", "À fermer au public les monuments trop fragiles", "À sanctionner les États qui négligent leurs monuments"], e: "Tombouctou y est inscrite en 2012. Venise a failli y entrer en 2021." }
+  ],
+  "hg-t4c": [
+    { t: "d", q: "En quelle année est créé le poste d’inspecteur général des monuments historiques ?", r: 1830, p: [1826, 1828, 1832, 1834], e: "1830, à l’initiative de Guizot. Piège : 1834, c’est l’arrivée de Prosper Mérimée à ce poste." },
+    { t: "n", q: "Quel écrivain devient inspecteur général des monuments historiques sous Louis-Philippe ?", r: "Mérimée", ok: ["Prosper Mérimée"], p: ["Victor Hugo", "Viollet-le-Duc", "Stendhal"], e: "Prosper Mérimée (l’auteur de Carmen), en 1834. Victor Hugo milite pour les monuments (« Guerre aux démolisseurs ») ; Viollet-le-Duc est l’architecte qui restaure Notre-Dame et Carcassonne." },
+    { t: "d", q: "En quelle année est votée la grande loi sur les monuments historiques, toujours au cœur de leur protection ?", r: 1913, p: [1905, 1909, 1911, 1914], e: "Loi du 31 décembre 1913. Une première loi datait de 1887. Piège : 1905, c’est la séparation des Églises et de l’État." },
+    { t: "d", q: "En quelle année la loi Malraux crée-t-elle les secteurs sauvegardés ?", r: 1962, p: [1958, 1959, 1964, 1967], e: "1962. Piège : 1959, c’est l’année où Malraux devient le premier ministre des Affaires culturelles." },
+    { t: "n", q: "Quel ministre du général de Gaulle crée les secteurs sauvegardés pour protéger les centres anciens ?", r: "Malraux", ok: ["André Malraux"], p: ["Jack Lang", "Jacques Duhamel", "Michel Guy"], e: "André Malraux, ministre de 1959 à 1969. Jack Lang crée en 1984 la journée portes ouvertes des monuments, ancêtre des Journées du patrimoine." },
+    { t: "d", q: "En quelle année le bassin minier du Nord-Pas-de-Calais est-il inscrit au patrimoine mondial ?", r: 2012, p: [1990, 2008, 2010, 2014], e: "2012, comme « paysage culturel évolutif ». Piège : 1990, c’est la fermeture du dernier puits de la région, à Oignies." },
+    { t: "c", q: "Dans quelle catégorie le bassin minier est-il inscrit par l’UNESCO ?", r: "Paysage culturel évolutif", p: ["Patrimoine culturel immatériel", "Patrimoine naturel", "Patrimoine en péril"], e: "Terrils, chevalements, cités minières : un paysage façonné par le travail des hommes et toujours habité." },
+    { t: "c", q: "Quel musée ouvre en 2012 dans le bassin minier, symbole de sa reconversion ?", r: "Le Louvre-Lens", p: ["Le Centre Pompidou-Metz", "Le Mucem de Marseille", "La Piscine de Roubaix"], e: "Le Louvre-Lens, sur une ancienne fosse de mine. Pompidou-Metz ouvre en 2010, le Mucem en 2013." },
+    { t: "d", q: "En quelle année le repas gastronomique des Français est-il inscrit au patrimoine immatériel de l’humanité ?", r: 2010, p: [2003, 2008, 2012, 2013], e: "2010. Piège : 2003, c’est la convention de l’UNESCO sur le patrimoine immatériel." },
+    { t: "d", q: "En quelle année sont créées les Journées du patrimoine en France ?", r: 1984, p: [1981, 1982, 1986, 1991], e: "1984, à l’initiative de Jack Lang. Piège : 1982, c’est la première Fête de la musique, autre idée de Jack Lang." },
+    { t: "n", q: "Quel politiste américain a forgé la notion de soft power ?", r: "Nye", ok: ["Joseph Nye", "Joseph S. Nye"], p: ["Huntington", "Fukuyama", "Brzezinski"], e: "Joseph Nye, en 1990. Huntington : le « choc des civilisations » ; Fukuyama : la « fin de l’histoire » ; Brzezinski : conseiller de Carter." }
+  ],
+
+  /* ---------------- HGGSP · Thème 5 ---------------- */
+  "hg-t5a": [
+    { t: "c", q: "Au sens de l’HGGSP, l’environnement, c’est…", r: "Ce qui entoure les sociétés, naturel ou artificiel", p: ["La nature sauvage, sans aucune trace humaine", "Les êtres vivants d’un milieu et leurs relations", "Le climat et la météo propres à une région"], e: "Une notion construite, dont la perception change selon les époques. La nature sauvage, c’est la wilderness ; les êtres vivants et leurs relations, un écosystème." },
+    { t: "d", q: "En quelle année Colbert prend-il sa grande ordonnance sur les forêts ?", r: 1669, p: [1661, 1665, 1667, 1672], e: "1669 : exploiter et protéger la forêt pour fournir du bois à la marine. Piège : 1661, c’est le début du règne personnel de Louis XIV." },
+    { t: "n", q: "Quel ministre de Louis XIV réglemente l’exploitation des forêts pour la marine ?", r: "Colbert", ok: ["Jean-Baptiste Colbert"], p: ["Louvois", "Fouquet", "Vauban"], e: "Jean-Baptiste Colbert, aussi chargé de la Marine. Louvois s’occupe de la guerre, Vauban des fortifications ; Fouquet est arrêté en 1661." },
+    { t: "d", q: "En quelle année est créé l’Office national des forêts (ONF) ?", r: 1964, p: [1960, 1962, 1968, 1971], e: "1964. Piège : 1971, c’est le premier ministère de l’Environnement." },
+    { t: "c", q: "Comment a évolué la surface des forêts françaises depuis le début du XIXe siècle ?", r: "Elle a presque doublé", p: ["Elle a été divisée par deux", "Elle est restée stable", "Elle a triplé"], e: "Exode rural, reboisement, politique forestière : la forêt couvre aujourd’hui près d’un tiers du territoire." },
+    { t: "c", q: "Où et quand commence la révolution néolithique ?", r: "Au Proche-Orient, vers 10 000 av. J.-C.", p: ["Au Proche-Orient, vers 3 000 av. J.-C.", "En Europe de l’Ouest, vers 10 000 av. J.-C.", "En Afrique de l’Est, vers 50 000 av. J.-C."], e: "Au Proche-Orient (le « Croissant fertile ») : agriculture, élevage, sédentarisation. Vers 3 000 av. J.-C., c’est l’apparition de l’écriture." },
+    { t: "c", q: "Quand et où commence la révolution industrielle ?", r: "À la fin du XVIIIe siècle, en Angleterre", p: ["À la fin du XVIIIe siècle, en Allemagne", "Au milieu du XIXe siècle, en Angleterre", "Au début du XVIIe siècle, aux Pays-Bas"], e: "Fin du XVIIIe siècle en Angleterre : charbon, machine à vapeur. Elle gagne ensuite la Belgique, la France, l’Allemagne." },
+    { t: "n", q: "Quel chimiste propose la notion d’Anthropocène ?", r: "Crutzen", ok: ["Paul Crutzen"], p: ["Arrhenius", "Keeling", "Lovelock"], e: "Paul Crutzen, en 2000 ; prix Nobel 1995 pour ses travaux sur la couche d’ozone. Arrhenius calcule dès 1896 l’effet du CO2 sur le climat ; Keeling mesure le CO2 de l’air depuis 1958." },
+    { t: "d", q: "En quelle année les géologues refusent-ils de faire de l’Anthropocène une époque officielle ?", r: 2024, p: [2000, 2021, 2022, 2023, 2025], e: "Mars 2024. Le mot reste très utilisé pour désigner l’impact massif des sociétés humaines sur la planète. Piège : 2000, c’est la proposition de Crutzen." },
+    { t: "d", q: "En quelle année est créé Yellowstone, le premier parc national au monde ?", r: 1872, p: [1864, 1868, 1869, 1876], e: "1872, aux États-Unis. Piège : 1864, Yosemite est protégé, mais il ne devient parc national qu’en 1890." }
+  ],
+  "hg-t5b": [
+    { t: "c", q: "À quelle période situe-t-on le petit âge glaciaire en Europe ?", r: "Du XIVe au XIXe siècle environ", p: ["Du Xe au XIIIe siècle environ", "Du XIIe au XVe siècle environ", "Du XVIIe au XXe siècle environ"], e: "XIVe-XIXe siècle. Piège : Xe-XIIIe siècle, c’est l’optimum climatique médiéval, plus doux." },
+    { t: "c", q: "À quelle période situe-t-on l’optimum climatique médiéval ?", r: "Du Xe au XIIIe siècle environ", p: ["Du XIVe au XIXe siècle environ", "Du Ve au VIIIe siècle environ", "Du XIIe au XVe siècle environ"], e: "Xe-XIIIe siècle : une période plus douce en Europe, avant le petit âge glaciaire." },
+    { t: "d", q: "En quelle année le « grand hiver » frappe-t-il la France ?", r: 1709, p: [1694, 1704, 1707, 1710, 1712], e: "1709, à la fin du règne de Louis XIV. Piège : 1693-1694, c’est la grande famine, qui tue plus d’un million de personnes." },
+    { t: "d", q: "En quelle année est créé le GIEC ?", r: 1988, p: [1979, 1985, 1990, 1992], e: "1988. Pièges : 1990, son premier rapport ; 1992, le sommet de Rio." },
+    { t: "n", q: "Quel groupe d’experts publie les rapports de référence sur le climat ?", r: "GIEC", ok: ["IPCC"], p: ["PNUE", "OMM", "UICN"], e: "Le GIEC (IPCC en anglais), créé par l’OMM (Organisation météorologique mondiale) et le PNUE (Programme des Nations unies pour l’environnement). L’UICN publie la liste rouge des espèces menacées." },
+    { t: "d", q: "En quelle année a lieu le sommet de la Terre de Rio ?", r: 1992, p: [1972, 1990, 1994, 1997], e: "Juin 1992. Pièges : 1972, le premier sommet de la Terre, à Stockholm ; 1997, le protocole de Kyoto." },
+    { t: "c", q: "Que crée le sommet de la Terre de Rio ?", r: "La convention-cadre de l’ONU sur le climat", p: ["Le GIEC", "Le protocole de Kyoto", "Le Programme des Nations unies pour l’environnement"], e: "La CCNUCC, dont les États se réunissent ensuite chaque année aux COP. Le GIEC date de 1988, Kyoto de 1997, le PNUE de 1972." },
+    { t: "d", q: "En quelle année est adopté le protocole de Kyoto ?", r: 1997, p: [1992, 1995, 1999, 2005], e: "Décembre 1997. Piège : 2005, c’est son entrée en vigueur, après la ratification russe." },
+    { t: "c", q: "Quelle est la grande différence entre Kyoto et l’accord de Paris ?", r: "Kyoto contraint les pays riches ; Paris repose sur des engagements de tous", p: ["Kyoto repose sur le volontariat ; Paris contraint tous les pays", "Kyoto concerne tous les pays ; Paris seulement les riches", "Kyoto a été ratifié par les États-Unis, Paris non"], e: "Kyoto : objectifs contraignants pour les seuls pays industrialisés. Paris : chaque pays fixe ses propres engagements (contributions nationales volontaires)." },
+    { t: "c", q: "Quel objectif fixe l’accord de Paris ?", r: "Nettement moins de 2 °C, en visant 1,5 °C", p: ["Moins de 3 °C, en visant 2 °C", "Moins de 1,5 °C, en visant 1 °C", "Diviser par deux les émissions d’ici 2020"], e: "Par rapport à l’ère préindustrielle, avec des contributions nationales volontaires." },
+    { t: "d", q: "En quelle année se tient la COP21, qui adopte l’accord de Paris ?", r: 2015, p: [2009, 2013, 2014, 2016], e: "Décembre 2015. Pièges : 2009, l’échec de la COP15 de Copenhague ; 2016, l’entrée en vigueur de l’accord." },
+    { t: "d", q: "En quelle année Donald Trump annonce-t-il pour la première fois le retrait de l’accord de Paris ?", r: 2017, p: [2016, 2018, 2019, 2020], e: "Juin 2017, effectif en novembre 2020. Biden y revient en 2021 ; Trump annonce un nouveau retrait en janvier 2025." },
+    { t: "c", q: "Où se tient la COP30, en 2025 ?", r: "À Belém, au Brésil", p: ["À Bakou, en Azerbaïdjan", "À Dubaï, aux Émirats arabes unis", "À Charm el-Cheikh, en Égypte"], e: "COP27 : Charm el-Cheikh (2022). COP28 : Dubaï (2023). COP29 : Bakou (2024). COP30 : Belém, en Amazonie (2025)." }
+  ],
+  "hg-t5c": [
+    { t: "n", q: "Quel naturaliste fonde le Sierra Club en 1892 pour préserver la nature sauvage ?", r: "Muir", ok: ["John Muir"], p: ["Pinchot", "Thoreau", "Leopold"], e: "John Muir, défenseur de la préservation. Pinchot défend au contraire la conservation. Thoreau (Walden, 1854) et Aldo Leopold sont d’autres penseurs américains de la nature." },
+    { t: "n", q: "Qui dirige à partir de 1905 le Service des forêts et défend une exploitation raisonnée des ressources ?", r: "Pinchot", ok: ["Gifford Pinchot"], p: ["Muir", "Leopold", "Thoreau"], e: "Gifford Pinchot, proche du président Theodore Roosevelt : c’est la conservation." },
+    { t: "c", q: "La conservation, au sens de Pinchot, c’est…", r: "Exploiter la nature de façon raisonnée pour qu’elle dure", p: ["Protéger la nature pour elle-même, sans l’exploiter", "Interdire toute présence humaine dans les forêts", "Remettre un milieu dans son état d’origine"], e: "Conservation = usage raisonné (Pinchot). Préservation = la nature pour elle-même (Muir). Remettre en état, c’est la restauration." },
+    { t: "c", q: "La préservation, au sens de John Muir, c’est…", r: "Protéger la nature sauvage pour elle-même", p: ["Exploiter les ressources de façon raisonnée", "Replanter les forêts après les coupes", "Protéger la nature pour le tourisme"], e: "Muir veut sanctuariser la wilderness ; Pinchot, gérer les ressources pour qu’elles durent (conservation)." },
+    { t: "c", q: "Quand le Dust Bowl frappe-t-il les Grandes Plaines ?", r: "Dans les années 1930", p: ["Dans les années 1900", "Dans les années 1920", "Dans les années 1940"], e: "Années 1930, en pleine Grande Dépression : sécheresse et labours intensifs provoquent des tempêtes de poussière ; des centaines de milliers de fermiers partent vers la Californie." },
+    { t: "d", q: "En quelle année est créée l’EPA, l’agence américaine de protection de l’environnement ?", r: 1970, p: [1968, 1969, 1972, 1973], e: "1970, l’année du premier « Jour de la Terre »." },
+    { t: "n", q: "Sous quel président est créée l’EPA, l’agence fédérale de protection de l’environnement ?", r: "Nixon", ok: ["Richard Nixon"], p: ["Kennedy", "Johnson", "Carter", "Ford"], e: "Richard Nixon, un républicain : l’environnement fait alors consensus aux États-Unis." },
+    { t: "d", q: "En quelle année est adopté le Clean Water Act ?", r: 1972, p: [1969, 1970, 1971, 1974], e: "1972. Piège : 1970, c’est le Clean Air Act renforcé et la création de l’EPA." },
+    { t: "c", q: "Quel exemple montre les tensions entre l’État fédéral et les États fédérés ?", r: "La Californie impose des normes d’émission plus strictes", p: ["La Californie refuse d’appliquer le Clean Air Act", "Le Texas a signé seul l’accord de Paris", "L’Alaska interdit les parcs nationaux"], e: "La Californie impose aux voitures des normes plus strictes que l’État fédéral, qui tente parfois de l’en empêcher." },
+    { t: "c", q: "Quelle est la position des États-Unis sur le protocole de Kyoto ?", r: "Signé, mais jamais ratifié", p: ["Ratifié, puis quitté", "Jamais signé", "Ratifié et respecté"], e: "Signé sous Clinton, jamais ratifié par le Sénat ; George W. Bush le rejette en 2001. Piège : c’est le Canada qui l’a ratifié puis quitté (2011)." },
+    { t: "c", q: "Quel pays est le premier émetteur mondial de CO2 ?", r: "La Chine", p: ["Les États-Unis", "L’Inde", "La Russie"], e: "La Chine, devant les États-Unis et l’Inde. Mais par habitant, un Américain émet nettement plus qu’un Chinois." },
+    { t: "c", q: "Malgré les retraits de l’accord de Paris, qui continue à agir pour le climat aux États-Unis ?", r: "Des États fédérés, des villes et des entreprises", p: ["Le Sénat, qui a ratifié l’accord sans le président", "La Cour suprême, qui a annulé les retraits", "L’EPA, qui a quitté le gouvernement fédéral"], e: "Des États comme la Californie, des villes et des entreprises maintiennent leurs objectifs : un exemple de tension entre échelles." }
+  ],
+
+  /* ---------------- HGGSP · Thème 6 ---------------- */
+  "hg-t6a": [
+    { t: "c", q: "Une société de la connaissance, c’est une société où…", r: "Le savoir est au cœur de l’économie et de la puissance", p: ["Tout le monde a fait des études supérieures longues", "L’État contrôle étroitement la circulation des savoirs", "L’économie repose surtout sur l’industrie et les usines"], e: "Produire, diffuser et utiliser les connaissances devient une ressource économique et un enjeu de puissance." },
+    { t: "c", q: "Pourquoi la Réforme protestante fait-elle progresser l’alphabétisation, y compris des femmes ?", r: "Chaque fidèle doit pouvoir lire la Bible lui-même", p: ["Luther invente l’imprimerie pour diffuser la Bible", "L’Église catholique ouvre des écoles pour tous", "Le latin devient obligatoire dans les écoles"], e: "Lire la Bible soi-même, dans sa langue. Piège : l’imprimerie, c’est Gutenberg, vers 1450, avant Luther." },
+    { t: "c", q: "Quand sont votées les lois qui rendent l’école primaire gratuite, laïque et obligatoire ?", r: "En 1881-1882", p: ["En 1850-1851", "En 1867-1868", "En 1905-1906"], e: "1881 (gratuité), 1882 (obligation, laïcité), pour les filles comme pour les garçons. Pièges : 1850, loi Falloux ; 1867, loi Duruy (écoles de filles) ; 1905, séparation des Églises et de l’État." },
+    { t: "n", q: "Quel ministre fait voter l’école gratuite, laïque et obligatoire ?", r: "Ferry", ok: ["Jules Ferry"], p: ["Guizot", "Duruy", "Falloux"], e: "Jules Ferry. Guizot impose une école de garçons par commune (1833) ; Falloux et Duruy font progresser les écoles de filles (1850, 1867)." },
+    { t: "d", q: "En quelle année Henri Becquerel découvre-t-il la radioactivité ?", r: 1896, p: [1895, 1897, 1898, 1903], e: "1896, avec des sels d’uranium. Pièges : 1895, Röntgen découvre les rayons X ; 1898, les Curie découvrent le polonium et le radium." },
+    { t: "n", q: "Qui découvre la radioactivité, à partir de sels d’uranium ?", r: "Becquerel", ok: ["Henri Becquerel"], p: ["Röntgen", "Rutherford", "Pierre Curie"], e: "Henri Becquerel. C’est Marie Curie qui invente le mot « radioactivité »." },
+    { t: "d", q: "En quelle année Pierre et Marie Curie découvrent-ils le polonium et le radium ?", r: 1898, p: [1895, 1896, 1900, 1903], e: "1898. Piège : 1903, c’est leur premier prix Nobel." },
+    { t: "c", q: "Quel prix Nobel Marie Curie reçoit-elle en 1903 ?", r: "Physique, avec Pierre Curie et Becquerel", p: ["Chimie, seule", "Physique, seule", "Physique, avec Pierre Curie seulement", "Chimie, avec Pierre Curie et Becquerel"], e: "1903 : physique, partagé. Plus tard : chimie, seule. Elle est la seule personne récompensée dans deux sciences différentes." },
+    { t: "d", q: "En quelle année Marie Curie reçoit-elle, seule, le prix Nobel de chimie ?", r: 1911, p: [1903, 1906, 1909, 1913], e: "1911. Pièges : 1903, son premier Nobel ; 1906, la mort de Pierre Curie." },
+    { t: "d", q: "En quelle année Irène et Frédéric Joliot-Curie découvrent-ils la radioactivité artificielle ?", r: 1934, p: [1932, 1935, 1936, 1938], e: "1934. Pièges : 1935, leur prix Nobel de chimie ; 1938, la découverte de la fission de l’uranium." },
+    { t: "d", q: "En quelle année se tient le premier conseil Solvay, qui réunit les grands physiciens ?", r: 1911, p: [1907, 1908, 1913, 1927], e: "1911, à Bruxelles. Piège : 1927, le plus célèbre, avec Einstein, Bohr et Marie Curie, seule femme." },
+    { t: "c", q: "Qu’est-ce que le projet Manhattan (1942-1945) ?", r: "Le programme secret américain de bombe atomique", p: ["Le programme secret soviétique de bombe atomique", "Le premier programme américain de conquête spatiale", "Un programme franco-britannique d’énergie nucléaire"], e: "Il mobilise des milliers de scientifiques, dont des exilés européens : la science devient un enjeu stratégique." }
+  ],
+  "hg-t6b": [
+    { t: "d", q: "En quelle année est créée la CIA ?", r: 1947, p: [1945, 1946, 1949, 1954], e: "1947, au début de la guerre froide." },
+    { t: "d", q: "En quelle année est créé le KGB ?", r: 1954, p: [1947, 1949, 1953, 1956], e: "1954, un an après la mort de Staline. Piège : 1947, c’est la CIA." },
+    { t: "n", q: "Quel service américain est chargé du renseignement extérieur pendant la guerre froide ?", r: "CIA", p: ["FBI", "NSA", "KGB"], e: "La CIA. Le FBI est la police fédérale ; la NSA intercepte les communications ; le KGB est soviétique." },
+    { t: "d", q: "En quelle année les époux Rosenberg sont-ils exécutés pour espionnage atomique ?", r: 1953, p: [1949, 1950, 1951, 1954], e: "Juin 1953. Pièges : 1950, leur arrestation ; 1951, leur condamnation ; 1949, la première bombe soviétique." },
+    { t: "c", q: "Qui sont les « Cinq de Cambridge » ?", r: "Des Britanniques espions au service de l’URSS", p: ["Des physiciens du projet Manhattan passés à l’URSS", "Des agents de la CIA infiltrés au KGB", "Des savants allemands recrutés par les Anglais"], e: "Recrutés à l’université de Cambridge dans les années 1930, ils ont livré des secrets britanniques et américains aux Soviétiques." },
+    { t: "c", q: "Pendant la Seconde Guerre mondiale, où les Britanniques déchiffrent-ils les codes allemands (Enigma) ?", r: "À Bletchley Park", p: ["À Los Alamos", "À Peenemünde", "À Cambridge"], e: "Bletchley Park, avec Alan Turing. Los Alamos : le laboratoire du projet Manhattan. Peenemünde : le centre allemand des fusées V2." },
+    { t: "c", q: "Comment les États-Unis récupèrent-ils des savants allemands après 1945, comme Wernher von Braun ?", r: "Par l’opération Paperclip", p: ["Par le projet Manhattan", "Par le plan Marshall", "Par l’opération Overlord"], e: "Paperclip : plus de 1 500 scientifiques allemands recrutés. Von Braun conçoit ensuite la fusée Saturn V. Le plan Marshall est une aide économique à l’Europe ; Overlord, le débarquement de 1944." },
+    { t: "c", q: "On parle de « circulation des cerveaux » plutôt que de « fuite » quand…", r: "Les diplômés partis font aussi profiter leur pays d’origine", p: ["Les diplômés quittent définitivement un pays pauvre", "Des étudiants viennent étudier sans jamais travailler", "Un pays interdit à ses chercheurs de partir"], e: "Retours, investissements, réseaux de la diaspora : l’Inde en est l’exemple type." },
+    { t: "c", q: "Quelle ville est surnommée la « Silicon Valley de l’Inde » ?", r: "Bangalore", p: ["Bombay", "New Delhi", "Calcutta"], e: "Bangalore (Bengaluru), où se concentrent les entreprises du numérique, souvent fondées ou dirigées par des ingénieurs passés par les États-Unis." },
+    { t: "c", q: "Que sont les IIT, en Inde ?", r: "Des écoles publiques d’ingénieurs très sélectives", p: ["Des entreprises de sous-traitance informatique", "Des universités américaines installées en Inde", "Des centres de recherche militaire secrets"], e: "Les Indian Institutes of Technology, créés à partir de 1951 : une élite d’ingénieurs, dont beaucoup partent aux États-Unis." }
+  ],
+  "hg-t6c": [
+    { t: "c", q: "À quelle couche du cyberespace appartiennent les câbles sous-marins et les data centers ?", r: "La couche physique", p: ["La couche logique", "La couche informationnelle"], e: "Physique : câbles, serveurs, data centers. Logique : logiciels, protocoles. Informationnelle : données et contenus." },
+    { t: "c", q: "À quelle couche du cyberespace appartiennent les logiciels et les protocoles d’internet ?", r: "La couche logique", p: ["La couche physique", "La couche informationnelle"], e: "Logique : ce qui fait fonctionner le réseau (logiciels, protocoles, noms de domaine)." },
+    { t: "c", q: "Une campagne de fausses informations sur les réseaux sociaux vise quelle couche du cyberespace ?", r: "La couche informationnelle", p: ["La couche physique", "La couche logique"], e: "Informationnelle (ou sémantique) : les données et les contenus qui circulent." },
+    { t: "c", q: "Pourquoi les câbles sous-marins sont-ils un enjeu de puissance ?", r: "Ils portent l’essentiel du trafic internet entre continents", p: ["Ils transportent l’essentiel de l’électricité mondiale", "Ils appartiennent tous à l’Union internationale des télécommunications", "Ils ne servent qu’aux communications militaires"], e: "Environ 99 % du trafic intercontinental : un risque d’espionnage et de sabotage. Les géants du numérique en posent désormais eux-mêmes." },
+    { t: "d", q: "En quelle année l’Estonie subit-elle une cyberattaque massive attribuée à la Russie ?", r: 2007, p: [2004, 2005, 2008, 2010], e: "2007, après le déplacement d’un monument soviétique à Tallinn. Pièges : 2008, cyberattaques pendant la guerre en Géorgie ; 2010, Stuxnet révélé." },
+    { t: "c", q: "Quelle cible vise le virus Stuxnet ?", r: "Le programme nucléaire iranien", p: ["Le réseau électrique ukrainien", "Les hôpitaux britanniques", "Les banques estoniennes"], e: "Stuxnet, attribué aux États-Unis et à Israël, sabote des centrifugeuses iraniennes. Le réseau électrique ukrainien est coupé fin 2015 ; les hôpitaux britanniques sont paralysés par WannaCry en 2017." },
+    { t: "c", q: "NotPetya, en 2017, c’est…", r: "Un logiciel destructeur parti d’Ukraine qui frappe le monde entier", p: ["Le vol des données de millions d’utilisateurs de Facebook", "Le sabotage des centrifugeuses nucléaires iraniennes", "La coupure de câbles sous-marins en mer Baltique"], e: "Déguisé en rançongiciel, NotPetya détruit des données ; attribué à la Russie, il touche aussi de grandes entreprises (Maersk, Saint-Gobain…)." },
+    { t: "d", q: "En quelle année est créée l’ANSSI ?", r: 2009, p: [2006, 2008, 2011, 2017], e: "2009. Piège : 2017, c’est le COMCYBER, le commandement de cyberdéfense des armées." },
+    { t: "n", q: "Quelle agence française protège les systèmes informatiques de l’État et des opérateurs vitaux ?", r: "ANSSI", ok: ["Agence nationale de la sécurité des systèmes d’information"], p: ["CNIL", "DGSE", "COMCYBER", "DGSI"], e: "L’ANSSI. La CNIL protège les données personnelles ; la DGSE est le renseignement extérieur, la DGSI le renseignement intérieur ; le COMCYBER commande la cyberdéfense des armées." },
+    { t: "d", q: "En quelle année est créé le COMCYBER, commandement de cyberdéfense des armées ?", r: 2017, p: [2009, 2015, 2018, 2019], e: "2017. Piège : 2019, c’est la doctrine française de lutte informatique offensive." },
+    { t: "d", q: "En quelle année le RGPD entre-t-il en application ?", r: 2018, p: [2015, 2016, 2019, 2020], e: "Mai 2018. Piège : 2016, c’est son adoption." },
+    { t: "c", q: "Qu’est-ce que l’ENISA ?", r: "L’agence de l’Union européenne pour la cybersécurité", p: ["Le centre d’excellence de l’OTAN pour la cyberdéfense", "L’agence nationale française pour la cybersécurité", "Le règlement européen sur la protection des données"], e: "L’ENISA dépend de l’UE. Le centre de l’OTAN est à Tallinn ; l’agence française, c’est l’ANSSI ; le règlement, c’est le RGPD." },
+    { t: "c", q: "Quelle tension résume la cyberdéfense européenne ?", r: "Coopérer entre États tout en gardant sa souveraineté", p: ["Défendre l’UE en confiant tout à l’OTAN", "Protéger les données en interdisant internet", "Choisir entre la Chine et les États-Unis"], e: "Les États coopèrent (ENISA, RGPD) mais gardent la main sur leur défense et leur renseignement." }
+  ],
+
+  /* ---------------- PHILOSOPHIE : notions qui se ressemblent ---------------- */
+  "ph-art": [
+    { t: "c", q: "Pour Kant, en quoi le beau se distingue-t-il de l’agréable ?", r: "Le beau prétend plaire à tous ; l’agréable ne vaut que pour moi", p: ["Le beau est utile ; l’agréable ne sert strictement à rien", "Le beau se démontre ; l’agréable se ressent sans preuve", "Le beau vient de la nature ; l’agréable est fabriqué"], e: "L’agréable flatte mes sens (« à chacun son goût »). Le beau plaît sans concept, mais avec une prétention à valoir pour tous." },
+    { t: "c", q: "« Est beau ce qui plaît universellement sans concept » : que veut dire « sans concept » ?", r: "On ne peut pas prouver la beauté par une règle", p: ["La beauté n’existe pas vraiment, c’est une illusion", "Seuls les experts savent juger ce qui est beau", "Une belle œuvre n’a pas besoin d’avoir un sens"], e: "On ne démontre pas qu’une chose est belle : on l’éprouve, tout en attendant que les autres soient d’accord." },
+    { t: "c", q: "Qu’est-ce qui distingue l’œuvre d’art de l’objet technique ?", r: "L’œuvre n’a pas d’utilité : elle est faite pour être contemplée", p: ["L’œuvre est faite à la main, l’objet par une machine", "L’œuvre est unique, l’objet toujours fabriqué en série", "L’œuvre imite la nature, l’objet technique jamais"], e: "Le critère, c’est l’usage. Un objet artisanal peut être unique et fait main sans être une œuvre d’art." },
+    { t: "c", q: "Pourquoi Platon voit-il dans l’art une « imitation d’une imitation » ?", r: "L’artiste copie des choses qui copient déjà les Idées", p: ["L’artiste copie d’autres artistes plutôt que la nature", "L’art imite la nature sans jamais l’égaler", "L’art reproduit des choses fausses pour tromper"], e: "Le peintre copie le lit du menuisier, qui copie l’Idée du lit : l’art est loin du vrai (La République, livre X)." }
+  ],
+  "ph-bonheur": [
+    { t: "c", q: "Chez Épicure, quelle est la différence entre ataraxie et aponie ?", r: "Ataraxie : âme sans trouble ; aponie : corps sans douleur", p: ["Ataraxie : corps sans douleur ; aponie : âme sans trouble", "Ataraxie : plaisir intense ; aponie : absence de désir", "Ataraxie : indifférence ; aponie : refus du plaisir"], e: "Les deux ensemble font le bonheur épicurien : un plaisir en repos, pas une fête permanente." },
+    { t: "c", q: "Selon Épicure, quels désirs faut-il satisfaire ?", r: "Les désirs naturels et nécessaires", p: ["Les désirs naturels, même non nécessaires", "Tous les désirs, avec modération", "Aucun : il faut tous les supprimer"], e: "Naturels et nécessaires : manger, boire, s’abriter. Naturels non nécessaires : mets raffinés. Ni naturels ni nécessaires : gloire, richesse (Lettre à Ménécée)." },
+    { t: "c", q: "Pour les stoïciens, qu’est-ce qui dépend de nous ?", r: "Nos jugements et nos désirs", p: ["Notre santé et notre corps", "Notre réputation", "Notre richesse, si l’on travaille"], e: "Épictète : nos jugements, nos désirs, nos aversions dépendent de nous ; le corps, la réputation, les biens n’en dépendent pas." },
+    { t: "c", q: "Pour Kant, la morale rend-elle heureux ?", r: "Non : elle rend digne d’être heureux", p: ["Oui : agir moralement suffit au bonheur", "Oui, si l’on agit par intérêt bien compris", "Non : morale et bonheur s’excluent"], e: "Le bonheur est « un idéal de l’imagination », impossible à définir. La morale ne le garantit pas : elle nous en rend dignes." },
+    { t: "c", q: "Plaisir ou bonheur : quelle distinction est juste ?", r: "Le plaisir est passager ; le bonheur, durable et global", p: ["Le plaisir est intellectuel ; le bonheur, corporel", "Le plaisir dépend de nous ; le bonheur, jamais", "Le plaisir est moral ; le bonheur ne l’est pas"], e: "Le bonheur est une satisfaction durable de toute l’existence, pas une somme de plaisirs." }
+  ],
+  "ph-conscience": [
+    { t: "c", q: "Se prendre soi-même comme objet de pensée, c’est la conscience…", r: "Réfléchie", p: ["Immédiate", "Morale", "Spontanée"], e: "Immédiate (ou spontanée) : percevoir, sentir. Réfléchie : faire retour sur soi. Morale : juger le bien et le mal." },
+    { t: "c", q: "La conscience morale, c’est…", r: "La capacité de juger le bien et le mal de ses actes", p: ["Le simple fait de savoir que l’on existe", "La perception de tout ce qui nous entoure", "Le souvenir de nos actions passées"], e: "À ne pas confondre avec la conscience psychologique : savoir ce que l’on vit, que l’on existe." },
+    { t: "c", q: "« Toute conscience est conscience de quelque chose » (Husserl) signifie que…", r: "La conscience est toujours tournée vers un objet", p: ["La conscience se connaît d’abord elle-même", "On n’a conscience que des choses matérielles", "La conscience n’est faite que de souvenirs"], e: "C’est l’intentionnalité. Piège : se connaître d’abord soi-même, c’est plutôt l’idée du cogito de Descartes." },
+    { t: "c", q: "Pourquoi le cogito est-il une certitude pour Descartes ?", r: "Même en doutant de tout, je ne peux douter que je pense", p: ["Mes sens ne me trompent jamais sur moi-même", "Dieu me l’a révélé avant tout raisonnement", "Tout le monde en a fait l’expérience"], e: "Douter, c’est penser ; penser, c’est être. « Je pense, donc je suis » (1637)." }
+  ],
+  "ph-devoir": [
+    { t: "c", q: "« Si tu veux réussir ton bac, travaille » est un impératif…", r: "Hypothétique", p: ["Catégorique", "Moral, au sens de Kant", "Universel"], e: "Hypothétique : il dépend d’un but (« si tu veux… »). Catégorique : il commande sans condition, comme le devoir moral." },
+    { t: "c", q: "Le commerçant honnête par intérêt agit, selon Kant…", r: "Conformément au devoir, pas par devoir", p: ["Par devoir", "Contre le devoir", "Par devoir et conformément au devoir"], e: "Son action est correcte en apparence, mais son motif est l’intérêt : elle n’a pas de valeur morale." },
+    { t: "c", q: "Pour Kant, qu’est-ce qui donne sa valeur morale à une action ?", r: "L’intention : agir par respect pour la loi morale", p: ["Ses conséquences heureuses pour le plus grand nombre", "Sa conformité à la loi de l’État", "Le plaisir qu’elle procure à celui qui agit"], e: "Piège : juger une action par ses conséquences, c’est l’utilitarisme (Bentham, Mill), pas Kant." },
+    { t: "c", q: "L’impératif catégorique commande d’agir selon une maxime…", r: "Qu’on peut vouloir comme loi universelle", p: ["Qui rend le plus de gens heureux", "Conforme aux lois de son pays", "Qui sert son propre intérêt"], e: "« Agis seulement d’après la maxime dont tu peux vouloir qu’elle devienne une loi universelle. »" }
+  ],
+  "ph-etat": [
+    { t: "c", q: "Pour Weber, ce qui caractérise l’État, c’est…", r: "Le monopole de la violence physique légitime", p: ["Le monopole de la violence physique, même illégitime", "Une armée plus forte que celle des voisins", "Le consentement unanime des citoyens"], e: "Le mot clé est « légitime » : la violence de l’État est reconnue comme fondée, sur un territoire donné." },
+    { t: "c", q: "Chez Rousseau, volonté générale et volonté de tous…", r: "La première vise l’intérêt commun, la seconde additionne les intérêts privés", p: ["La première est l’avis de la majorité, la seconde l’unanimité", "La première est celle du roi, la seconde celle du peuple", "Ce sont deux noms pour la même chose"], e: "Du contrat social : la volonté de tous n’est qu’une somme de volontés particulières." },
+    { t: "c", q: "Chez Hobbes, pourquoi les hommes sortent-ils de l’état de nature ?", r: "Par peur de la mort violente, pour leur sécurité", p: ["Pour devenir libres en obéissant à la volonté générale", "Pour protéger d’abord leur propriété", "Parce que Dieu leur ordonne de vivre en société"], e: "Hobbes : la sécurité. La volonté générale, c’est Rousseau ; protéger la propriété, c’est Locke." },
+    { t: "c", q: "Chez Hobbes, l’état de nature, c’est…", r: "La guerre de chacun contre chacun", p: ["Une paix où l’homme est naturellement bon", "Une société déjà régie par des lois", "La soumission de tous à un roi"], e: "Piège : l’homme naturellement bon et paisible, c’est l’état de nature de Rousseau." }
+  ],
+  "ph-inconscient": [
+    { t: "c", q: "Dans la seconde topique de Freud, le surmoi, c’est…", r: "Les interdits intériorisés (parents, société)", p: ["Le réservoir des pulsions", "L’instance qui s’adapte à la réalité", "La partie consciente de l’esprit"], e: "Ça : les pulsions. Surmoi : les interdits. Moi : il négocie entre les deux et la réalité." },
+    { t: "c", q: "Dans la seconde topique de Freud, le ça, c’est…", r: "Le réservoir des pulsions", p: ["L’ensemble des interdits moraux", "L’instance qui s’adapte à la réalité", "La mémoire des souvenirs conscients"], e: "Le ça ignore la morale et la réalité : il réclame une satisfaction immédiate." },
+    { t: "c", q: "Chez Freud, le préconscient, c’est…", r: "Ce qui n’est pas conscient mais peut le devenir facilement", p: ["Ce qui est refoulé et ne revient que déguisé", "Les pulsions venues du corps, toujours actives", "La voix intérieure de la conscience morale"], e: "Un souvenir disponible (ton numéro de téléphone) est préconscient. Un désir refoulé est inconscient : il ne revient que déguisé (rêves, lapsus, actes manqués)." },
+    { t: "c", q: "Le refoulement, c’est…", r: "Maintenir hors de la conscience des désirs jugés inacceptables", p: ["Oublier normalement ce qui est sans importance", "Fuir sa liberté en se racontant des histoires", "Résister consciemment à une tentation"], e: "Le refoulement est inconscient. Fuir sa liberté en se racontant des histoires, c’est la mauvaise foi selon Sartre." },
+    { t: "c", q: "Pourquoi Sartre critique-t-il l’idée d’inconscient ?", r: "Elle peut servir d’excuse pour fuir sa responsabilité", p: ["Elle n’est pas prouvée par la neurologie", "Elle rendrait l’homme bien trop libre", "Seuls les malades auraient un inconscient"], e: "Pour Sartre, invoquer l’inconscient peut être de la mauvaise foi : nous restons responsables de ce que nous faisons." }
+  ],
+  "ph-justice": [
+    { t: "c", q: "Chez Aristote, répartir les biens selon le mérite de chacun relève de la justice…", r: "Distributive", p: ["Corrective", "Commutative", "Pénale"], e: "Distributive : égalité proportionnelle (à chacun selon son mérite). Corrective, ou commutative : égalité arithmétique, pour réparer un tort." },
+    { t: "c", q: "La justice corrective d’Aristote applique…", r: "Une égalité arithmétique, la même pour tous", p: ["Une égalité proportionnelle au mérite", "Une égalité des chances dès la naissance", "La loi du plus fort"], e: "Réparer un tort à l’identique, quelle que soit la personne. Le mérite, c’est la justice distributive." },
+    { t: "c", q: "L’équité, c’est…", r: "Corriger la loi générale pour l’adapter à un cas particulier", p: ["Appliquer la même règle à tous, sans exception", "Donner exactement la même chose à chacun", "Respecter la loi même injuste"], e: "Aristote : la loi est générale, donc parfois injuste dans un cas précis ; l’équité la corrige. Donner la même chose à tous, c’est l’égalité." },
+    { t: "c", q: "À quoi sert le « voile d’ignorance » de Rawls ?", r: "À choisir des principes sans connaître sa future place", p: ["À juger sans connaître le nom des accusés", "À cacher les inégalités pour éviter les révoltes", "À ignorer les lois injustes"], e: "Sans savoir si l’on sera riche ou pauvre, on choisit des principes équitables pour tous." },
+    { t: "c", q: "Pour Rawls, une inégalité est juste si…", r: "Elle profite aux plus défavorisés", p: ["Elle récompense le mérite de chacun", "La majorité des citoyens l’a votée", "Elle découle de talents naturels"], e: "C’est le principe de différence. Le mérite ne suffit pas pour Rawls : les talents dépendent aussi de la chance." }
+  ],
+  "ph-langage": [
+    { t: "c", q: "Chez Saussure, le signifié, c’est…", r: "Le concept, l’idée", p: ["Le son ou l’image du mot", "La chose réelle désignée", "Le lien entre le mot et la chose"], e: "Signifiant : la forme (le son « arbre »). Signifié : le concept. La chose réelle, c’est le référent." },
+    { t: "c", q: "Le référent, c’est…", r: "La chose réelle dont on parle", p: ["Le concept associé au mot", "La forme sonore du mot", "Le sens figuré d’un mot"], e: "Le mot « chien » n’aboie pas : il renvoie à un concept (le signifié), qui renvoie à des chiens réels (les référents)." },
+    { t: "c", q: "Que signifie « l’arbitraire du signe » ?", r: "Le lien entre le mot et le concept est conventionnel", p: ["Chacun peut donner aux mots le sens qu’il veut", "Les mots n’ont aucun sens précis", "Le sens dépend du ton de la voix"], e: "Conventionnel ne veut pas dire individuel : personne ne peut changer seul le sens des mots." },
+    { t: "c", q: "« Je promets de venir » est un énoncé…", r: "Performatif", p: ["Constatif", "Descriptif", "Interrogatif"], e: "Performatif (Austin) : le dire, c’est le faire. Constatif : décrire un fait, vrai ou faux." },
+    { t: "c", q: "Pour Descartes, qu’est-ce qui distingue le langage humain de celui des animaux ?", r: "Il exprime des pensées, adaptées à toute situation", p: ["Seul l’homme émet des signaux pour communiquer", "Seul l’homme éprouve des passions et les montre", "Seul l’homme sait imiter les sons qu’il entend"], e: "Les pies et les perroquets prononcent des mots, mais sans pensée : ils n’expriment que leurs passions." }
+  ],
+  "ph-liberte": [
+    { t: "c", q: "Le déterminisme affirme que…", r: "Tout événement a des causes qui le rendent nécessaire", p: ["Tout est écrit d’avance et arrivera quoi qu’on fasse", "L’homme choisit sans être contraint", "Le hasard gouverne tout"], e: "Piège : « quoi qu’on fasse », c’est le fatalisme. Pour le déterminisme, l’avenir dépend de causes, dont nos actions." },
+    { t: "c", q: "Pourquoi, selon Spinoza, les hommes se croient-ils libres ?", r: "Ils ignorent les causes qui les déterminent", p: ["Ils choisissent toujours ce qui est le meilleur", "Leur volonté n’obéit à aucune cause", "La loi leur accorde des droits et des libertés"], e: "Ils ont conscience de leurs actions, pas de leurs causes : comme une pierre lancée qui se croirait libre." },
+    { t: "c", q: "« L’existence précède l’essence » (Sartre) signifie que…", r: "L’homme n’a pas de nature fixée d’avance", p: ["L’homme existe d’abord dans l’esprit de Dieu", "Notre nature est fixée dès la naissance", "Il faut vivre longtemps pour trouver le bonheur"], e: "L’homme se fait par ses choix : il est « condamné à être libre » et responsable." },
+    { t: "c", q: "Pour Rousseau, être libre, c’est…", r: "Obéir à la loi qu’on s’est prescrite", p: ["Faire tout ce que l’on désire", "N’obéir à aucune loi, quelle qu’elle soit", "Obéir à la loi du plus fort"], e: "« L’obéissance à la loi qu’on s’est prescrite est liberté » (Du contrat social). Faire tout ce qu’on désire, c’est être esclave de ses désirs." },
+    { t: "c", q: "Le libre arbitre, c’est…", r: "Le pouvoir de choisir sans y être contraint", p: ["Agir sans aucune cause ni aucune raison", "Suivre tous ses désirs sans se retenir", "Obéir aux lois que l’on s’est données"], e: "Le libre arbitre s’oppose au déterminisme. Il ne veut pas dire agir sans raison. Obéir aux lois qu’on s’est données, c’est l’autonomie." }
+  ],
+  "ph-nature": [
+    { t: "c", q: "Pour Lévi-Strauss, ce qui relève de la culture, c’est…", r: "Ce qui obéit à une règle, variable selon les sociétés", p: ["Ce qui est universel chez tous les hommes", "Ce qui est inné", "Ce qui est commun aux hommes et aux animaux"], e: "Universel = nature ; règle = culture." },
+    { t: "c", q: "Pourquoi la prohibition de l’inceste est-elle « à la charnière » de la nature et de la culture ?", r: "Elle est universelle et c’est une règle", p: ["Elle est naturelle chez l’animal, culturelle chez l’homme", "Elle n’existe que dans certaines sociétés", "Elle relève uniquement de la biologie"], e: "Universelle comme la nature, règle comme la culture : c’est le passage de l’une à l’autre." },
+    { t: "c", q: "La perfectibilité, selon Rousseau, c’est…", r: "La capacité de l’homme à se transformer", p: ["La capacité de l’homme à devenir parfait", "L’instinct sûr qui guide les animaux", "La bonté naturelle de l’homme"], e: "Elle fait la grandeur de l’homme et ses malheurs. Piège : perfectible ne veut pas dire « qui atteindra la perfection »." },
+    { t: "c", q: "Ce qui est inné, c’est…", r: "Ce qui est là dès la naissance", p: ["Ce qui s’apprend au contact des autres", "Ce qui est commun à toute une culture", "Ce qui devient une habitude avec le temps"], e: "Inné s’oppose à acquis : ce qui vient de l’apprentissage, de l’éducation, de la culture." }
+  ],
+  "ph-raison": [
+    { t: "c", q: "« Tous les hommes sont mortels, or Socrate est un homme, donc Socrate est mortel » est…", r: "Une déduction", p: ["Une induction", "Une intuition", "Une hypothèse"], e: "Déduction : du général au particulier, conclusion nécessaire. Induction : de cas particuliers à une règle générale, jamais certaine." },
+    { t: "c", q: "Une induction, c’est…", r: "Tirer une règle générale de cas observés", p: ["Tirer une conclusion nécessaire de principes", "Saisir une vérité sans raisonner", "Réfuter une théorie par l’expérience"], e: "Le soleil s’est levé chaque jour, donc il se lèvera demain : probable, pas certain." },
+    { t: "c", q: "Si « le bon sens est la chose du monde la mieux partagée », pourquoi se trompe-t-on, selon Descartes ?", r: "Faute de bien conduire sa raison", p: ["Certains hommes n’ont pas de raison", "Les sens nous trompent toujours", "Le cœur l’emporte sur la raison"], e: "Tous ont la raison ; il faut une méthode pour bien l’appliquer." },
+    { t: "c", q: "Pour Kant, que ne peut pas connaître la raison ?", r: "Ce qui dépasse toute expérience possible", p: ["Les lois qui gouvernent la nature", "Les vérités mathématiques les plus abstraites", "Les objets que nous percevons par les sens"], e: "Dieu, l’âme, le monde comme totalité : on peut les penser, pas les connaître (Critique de la raison pure)." },
+    { t: "c", q: "Dans « le cœur a ses raisons que la raison ne connaît point », le cœur désigne…", r: "Une connaissance intuitive, qui sent sans démontrer", p: ["Les émotions passagères qui nous emportent", "L’amour que l’on porte à une personne", "La part inconsciente de notre esprit"], e: "Pour Pascal, le cœur saisit les premiers principes et Dieu, que la raison ne peut démontrer." }
+  ],
+  "ph-religion": [
+    { t: "c", q: "Chez Durkheim, le sacré, c’est…", r: "Ce qui est mis à part et protégé par des interdits", p: ["Ce qui appartient à la vie de tous les jours", "Seulement ce qui est surnaturel et invisible", "Ce qui est très ancien et respecté"], e: "Le profane, c’est l’ordinaire. La religion unit une communauté autour du sacré." },
+    { t: "c", q: "Pour Freud, une illusion, c’est…", r: "Une croyance née d’un désir, pas forcément fausse", p: ["Une croyance dont on a démontré la fausseté", "Une perception trompeuse due à nos sens", "Un mensonge entretenu volontairement par les prêtres"], e: "Ce qui définit l’illusion, c’est son origine (le désir d’être protégé), pas sa fausseté." },
+    { t: "c", q: "La religion, « opium du peuple », signifie pour Marx qu’elle…", r: "Console des souffrances réelles au lieu de les combattre", p: ["Est imposée par la force par les prêtres et les rois", "Est la cause principale de toutes les guerres", "Rend les hommes violents et intolérants"], e: "Elle est le « soupir de la créature opprimée » : un remède qui endort au lieu de guérir." },
+    { t: "c", q: "La foi, c’est…", r: "Adhérer à ce qui ne peut pas être démontré", p: ["Connaître une chose par l’expérience directe", "Avoir une opinion sans importance ni conséquence", "Suivre par habitude les usages de son groupe"], e: "La foi n’est ni un savoir (démontré) ni une simple opinion : c’est un engagement." }
+  ],
+  "ph-science": [
+    { t: "c", q: "Pour Popper, une théorie est scientifique si…", r: "Elle peut être réfutée par l’expérience", p: ["Elle a été vérifiée de nombreuses fois", "Elle explique tout sans exception", "La majorité des savants l’accepte"], e: "Piège : une théorie qui explique tout et ne peut jamais être prise en défaut n’est justement pas scientifique." },
+    { t: "c", q: "Les mathématiques…", r: "Démontrent à partir d’axiomes", p: ["Expérimentent pour tester des hypothèses", "Observent la nature pour en tirer des lois", "Généralisent à partir de faits"], e: "Démontrer (mathématiques) ≠ expérimenter (sciences de la nature)." },
+    { t: "c", q: "Un obstacle épistémologique (Bachelard), c’est…", r: "Une idée toute faite qui bloque la connaissance", p: ["Un instrument de mesure trop imprécis", "Un interdit religieux sur la science", "Une expérience qui échoue"], e: "« L’opinion pense mal » : la science avance contre nos évidences." },
+    { t: "c", q: "Une loi scientifique, c’est…", r: "Une relation constante entre des phénomènes", p: ["Une supposition qu’il reste à tester", "Une règle votée par les savants", "Une explication d’ensemble qui relie des lois"], e: "Une supposition à tester : une hypothèse. Une explication d’ensemble : une théorie." }
+  ],
+  "ph-technique": [
+    { t: "c", q: "Science ou technique : quelle distinction est juste ?", r: "La science cherche à connaître ; la technique, à produire", p: ["La science est pratique ; la technique, théorique", "La science est collective ; la technique, individuelle", "La science est utile ; la technique, gratuite"], e: "Aujourd’hui elles sont liées (technoscience), mais leur but diffère : savoir ou faire." },
+    { t: "c", q: "Pour Aristote, la technique…", r: "Imite la nature et achève ce qu’elle n’a pu finir", p: ["Arraisonne la nature comme un stock", "S’oppose à la nature pour la dominer", "N’a aucun rapport avec la nature"], e: "Arraisonner la nature, c’est la critique de la technique moderne par Heidegger." },
+    { t: "c", q: "Que nous impose le principe responsabilité de Jonas ?", r: "Agir pour que la vie humaine reste possible à l’avenir", p: ["Développer la technique le plus vite possible", "Renoncer à toute technique", "Ne juger que les effets immédiats"], e: "Notre puissance technique crée un devoir envers les générations futures (1979)." },
+    { t: "c", q: "La machine, à la différence de l’outil…", r: "A sa propre source d’énergie et impose son rythme", p: ["Prolonge la main et dépend de la force humaine", "Est forcément électronique", "Est toujours plus simple"], e: "L’outil prolonge le corps ; la machine fonctionne seule et l’homme doit s’y adapter." }
+  ],
+  "ph-temps": [
+    { t: "c", q: "Chez Bergson, la durée, c’est…", r: "Le temps vécu, continu et qualitatif", p: ["Le temps des horloges, découpé en unités", "Le temps de l’univers, sans conscience", "Le temps qui reste avant la mort"], e: "Le temps des horloges est mesuré et découpé comme de l’espace. La durée, elle, se vit." },
+    { t: "c", q: "Pour Augustin, où existe le temps ?", r: "Dans l’âme : mémoire, attention, attente", p: ["Dans le mouvement des astres", "Dans les horloges", "Uniquement dans le présent des choses"], e: "Le passé n’est plus, le futur n’est pas encore : ils existent dans l’âme (Confessions, XI). Augustin refuse de réduire le temps au mouvement des astres." },
+    { t: "c", q: "Pourquoi, selon Pascal, « nous ne vivons jamais, mais nous espérons de vivre » ?", r: "Nous pensons au passé ou à l’avenir, jamais au présent", p: ["La vie est trop courte pour en profiter", "Nous ne pensons qu’au présent, jamais à l’avenir", "Le temps n’existe pas vraiment"], e: "Nous fuyons le présent : il nous blesse ou nous ennuie (Pensées)." },
+    { t: "c", q: "L’éternité, c’est…", r: "Ce qui est hors du temps, sans succession", p: ["Un temps qui dure très longtemps", "Un temps qui se répète en cycles", "Un temps qui ne finira jamais mais a commencé"], e: "Durer sans fin, c’est la perpétuité. L’éternité n’est pas un temps très long : c’est l’absence de temps." }
+  ],
+  "ph-travail": [
+    { t: "c", q: "Pour Marx, être aliéné, c’est…", r: "Être dépossédé de son travail et devenir étranger à soi", p: ["Être payé moins que la valeur de ce qu’on produit", "Travailler plus de huit heures par jour à l’usine", "Être obligé de travailler pour pouvoir vivre"], e: "Piège : être payé moins que ce qu’on produit, c’est l’exploitation (la plus-value). L’aliénation, c’est la perte de soi dans le travail." },
+    { t: "c", q: "Chez Hegel, comment le travail libère-t-il l’esclave ?", r: "En transformant la matière, il se forme lui-même", p: ["Il gagne de quoi racheter sa liberté", "Le maître le libère en récompense", "Le travail l’empêche de penser à sa condition"], e: "En façonnant le monde, l’esclave prend conscience de lui-même (Phénoménologie de l’esprit, 1807)." },
+    { t: "c", q: "Pour Marx, qu’est-ce qui distingue le pire architecte de la meilleure abeille ?", r: "Il construit d’abord dans sa tête ce qu’il va réaliser", p: ["Il travaille en équipe avec d’autres hommes", "Il produit beaucoup plus vite et en quantité", "Il est payé pour le travail qu’il accomplit"], e: "Le travail humain est conscient : le résultat existe d’abord dans l’esprit." },
+    { t: "c", q: "Travail ou emploi : quelle distinction est juste ?", r: "Le travail transforme le monde ; l’emploi est un poste rémunéré", p: ["Le travail est rémunéré ; l’emploi ne l’est jamais", "Ce sont deux mots pour désigner la même chose", "L’emploi est manuel ; le travail est intellectuel"], e: "On peut travailler sans emploi (bénévolat, tâches domestiques) : le travail ne se réduit pas à l’emploi." }
+  ],
+  "ph-verite": [
+    { t: "c", q: "Vérité ou réalité : quelle distinction est juste ?", r: "La réalité est ce qui est ; la vérité qualifie ce qu’on en dit", p: ["La vérité est ce qui existe ; la réalité, ce qu’on en dit", "Ce sont deux mots pour la même chose", "La réalité est subjective ; la vérité, objective"], e: "Une chose est réelle ; un jugement est vrai ou faux." },
+    { t: "c", q: "Doute méthodique ou doute sceptique ?", r: "Le méthodique cherche une certitude ; le sceptique suspend son jugement", p: ["Le méthodique conclut qu’on ne peut rien savoir de certain", "Les deux refusent toute certitude, quelle qu’elle soit", "Le sceptique cherche une vérité absolue et définitive"], e: "Descartes doute pour trouver un point fixe (le cogito) ; le sceptique, lui, renonce à trancher." },
+    { t: "c", q: "Selon la vérité-correspondance, une affirmation est vraie si…", r: "Elle correspond à la réalité", p: ["Elle s’accorde avec nos autres croyances", "Elle est utile à celui qui y croit", "La majorité l’accepte"], e: "S’accorder avec nos autres croyances, c’est la vérité-cohérence ; être utile, la conception pragmatiste." },
+    { t: "c", q: "Mentir ou se tromper : quelle différence ?", r: "Mentir, c’est dire le faux en le sachant", p: ["Se tromper, c’est dire le faux exprès", "Les deux supposent de savoir que c’est faux", "Le mensonge porte sur les faits, l’erreur sur les idées"], e: "On peut se tromper de bonne foi : le mensonge est une question d’intention." }
+  ],
+  "ph-reperes": [
+    { t: "c", q: "Ce qui est conforme à ce qui est juste, même sans loi, est…", r: "Légitime", p: ["Légal", "Licite", "Réglementaire"], e: "Légal : conforme à la loi en vigueur. Une loi peut être légale sans être juste." },
+    { t: "c", q: "« Tout le monde triche » est un constat…", r: "En fait", p: ["En droit", "En fait et en droit", "Ni en fait ni en droit"], e: "Un fait (ce qui est) ne prouve pas un droit (ce qui doit être)." },
+    { t: "c", q: "Obtenir l’adhésion par des arguments rationnels, c’est…", r: "Convaincre", p: ["Persuader", "Séduire", "Manipuler"], e: "Persuader : jouer sur les émotions et les désirs. Convaincre : s’adresser à la raison." },
+    { t: "c", q: "Tenir pour vrai avec des raisons suffisantes et vérifiables, c’est…", r: "Savoir", p: ["Croire", "Avoir une opinion", "Espérer"], e: "Croire : tenir pour vrai sans preuve suffisante." },
+    { t: "c", q: "Un devoir que je reconnais et auquel je peux choisir d’obéir est…", r: "Une obligation", p: ["Une contrainte", "Une nécessité", "Une habitude"], e: "La contrainte s’impose par la force ; l’obligation suppose ma liberté." },
+    { t: "c", q: "Ce qui justifie une chose, sa raison d’être, c’est son…", r: "Fondement", p: ["Origine", "Commencement", "Histoire"], e: "L’origine : d’où vient la chose dans le temps. Le fondement : ce qui la rend légitime." },
+    { t: "c", q: "Ce qui vaut pour la plupart des cas, avec des exceptions, est…", r: "Général", p: ["Universel", "Particulier", "Singulier"], e: "Sans exception : universel. La plupart : général. Une partie : particulier. Un seul : singulier." },
+    { t: "c", q: "Ce qui vaut pour tous, sans aucune exception, est…", r: "Universel", p: ["Général", "Absolu", "Objectif"], e: "Piège : « absolu » veut dire sans condition, pas valable pour tous." },
+    { t: "c", q: "Ce qui est partagé par plusieurs sujets, sans dépendre de l’objet, est…", r: "Intersubjectif", p: ["Objectif", "Subjectif", "Universel"], e: "Objectif : dépend de l’objet. Subjectif : d’un seul sujet. Intersubjectif : partagé entre sujets (le goût d’une époque, par exemple)." },
+    { t: "c", q: "Ce qui ne dépend de rien d’autre, sans condition, est…", r: "Absolu", p: ["Relatif", "Universel", "Nécessaire"], e: "Relatif : dépend d’autre chose, d’un contexte." },
+    { t: "c", q: "Le but visé, ce « pour quoi » on agit, c’est…", r: "La fin", p: ["La cause", "L’origine", "Le moyen"], e: "La cause explique pourquoi c’est arrivé ; la fin, pour quoi on agit ; le moyen, ce qui permet d’y arriver." },
+    { t: "c", q: "Ce qui pourrait ne pas être, ou être autrement, est…", r: "Contingent", p: ["Nécessaire", "Essentiel", "Impossible"], e: "Nécessaire : ce qui ne peut pas ne pas être." },
+    { t: "c", q: "Pour un être humain, avoir les yeux bleus est…", r: "Accidentel", p: ["Essentiel", "Nécessaire", "Universel"], e: "Essentiel : ce sans quoi la chose ne serait pas ce qu’elle est. Accidentel : ce qui pourrait changer sans qu’elle change de nature." },
+    { t: "c", q: "Le gland est un chêne…", r: "En puissance", p: ["En acte", "En fait", "En droit"], e: "Aristote : en puissance = ce qu’il peut devenir ; en acte = ce qu’il est réellement." },
+    { t: "c", q: "Une connaissance qui passe par un intermédiaire (raisonnement, témoignage, instrument) est…", r: "Médiate", p: ["Immédiate", "Intuitive", "Innée"], e: "Immédiat : saisi directement, sans intermédiaire, comme une intuition." },
+    { t: "c", q: "Comprendre une action humaine, et pas seulement l’expliquer, c’est…", r: "Saisir le sens qu’elle a pour celui qui agit", p: ["La rattacher à des causes, comme un phénomène naturel", "La juger bonne ou mauvaise", "La prévoir avec certitude"], e: "Expliquer : chercher les causes (sciences de la nature). Comprendre : saisir les intentions et le sens (sciences humaines)." },
+    { t: "c", q: "Dans une dissertation, un exemple…", r: "Illustre une idée mais ne la prouve pas", p: ["Suffit à lui seul à prouver une idée", "Doit toujours être inventé pour l’occasion", "Peut remplacer un argument"], e: "Un exemple appuie un argument. Un seul contre-exemple, en revanche, peut réfuter une thèse universelle." }
+  ],
+
+  /* ---------------- GRAND ORAL ---------------- */
+  "go-oral": [
+    { t: "c", q: "Combien de temps dure la préparation du grand oral ?", r: "20 minutes", p: ["10 minutes", "30 minutes", "1 heure"], e: "20 minutes de préparation, puis 20 minutes devant le jury." },
+    { t: "c", q: "Comment se déroulent les 20 minutes devant le jury, en 2027 ?", r: "10 min de présentation debout, puis 10 min d’échange", p: ["5 min de présentation, 10 min d’échange, 5 min sur l’orientation", "15 min de présentation, puis 5 min de questions", "20 min d’échange libre avec le jury"], e: "Piège : 5 + 10 + 5, c’était l’ancien format. En 2027 : 10 min de présentation, 10 min d’échange, qui peut porter sur ton projet." },
+    { t: "c", q: "Quel est le coefficient du grand oral en 2027 ?", r: "8", p: ["10", "6", "16"], e: "8, autant que la philo (il était de 10 avant). L’HGGSP compte 16." },
+    { t: "c", q: "Combien de questions présentes-tu au jury ?", r: "Deux : le jury en choisit une", p: ["Une seule, que tu choisis", "Trois : le jury en choisit une", "Deux : tu les présentes toutes les deux"], e: "Deux questions préparées avec tes professeurs ; le jury choisit celle que tu présentes." },
+    { t: "c", q: "Peut-on rattraper le grand oral à l’oral de contrôle ?", r: "Non, jamais", p: ["Oui, comme les autres épreuves", "Oui, si la moyenne est entre 8 et 10", "Oui, en repassant la même question"], e: "Le grand oral ne se rattrape pas : il se prépare." }
+  ]
+};
+
+/* ============================================================
    CŒUR : utilitaires, état, stockage partagé, briques d’interface
    ============================================================ */
 
@@ -948,6 +1309,11 @@ function h(tag, props, ...kids) {
     e.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
   }
   return e;
+}
+/* append() natif écrirait le texte « null » pour une brique absente (x ? h(…) : null) : on l’ignore partout */
+for (const P of [Element.prototype, DocumentFragment.prototype]) for (const nom of ["append", "prepend", "replaceChildren"]) {
+  const natif = P[nom];
+  P[nom] = function (...kids) { return natif.apply(this, kids.filter((k) => k != null && k !== false)); };
 }
 const SVGNS = "http://www.w3.org/2000/svg";
 function sv(tag, attrs, ...kids) {
@@ -1368,6 +1734,144 @@ function paquetChapitre(chapId, max) {
   return out.slice(0, max || 14);
 }
 
+/* ---------- Quiz : banque à pièges, niveaux, correction ---------- */
+const QUIZ_TAILLE = 10;          // questions par quiz
+const QUIZ_A_ECRIRE = 2;         // réussites d’affilée en QCM avant de devoir écrire la date ou le nom
+function hacher(s) { let x = 5381; for (let i = 0; i < s.length; i++) x = (Math.imul(x, 33) ^ s.charCodeAt(i)) >>> 0; return x.toString(36); }
+function questionDeCarte(c, cartes, chapId) {
+  // pièges pris dans le même chapitre : des définitions qui se ressemblent
+  const p = [...new Set(cartes.filter((k) => k.id !== c.id && k.verso !== c.verso).map((k) => k.verso))];
+  return p.length >= 2 ? { id: `q.${chapId}.c${hacher(c.id)}`, chap: chapId, t: "c", q: `Quelle est la bonne définition de « ${c.recto} » ?`, r: c.verso, p, ok: [], e: "", carte: true } : null;
+}
+function questionsDuChap(chapId) {
+  if (!CHAP[chapId]) return [];
+  const banque = (QUIZ[chapId] || []).map((x) => Object.assign({ id: `q.${chapId}.${hacher(x.q)}`, chap: chapId, ok: [] }, x));
+  const cartes = cartesDuChap(chapId);
+  const sources = banque.length >= 4 ? cartes.filter((c) => c.origine !== "depart") : cartes;
+  for (const c of sources) { const x = questionDeCarte(c, cartes, chapId); if (x) banque.push(x); }
+  return banque;
+}
+const etatQuestion = (x) => (x && x.id && S.progres.get(x.id)) || null;
+const aEcrire = (x) => (x.t === "d" || x.t === "n") && ((etatQuestion(x) || {}).niv || 0) >= QUIZ_A_ECRIRE;
+const questionMaitrisee = (x) => { const p = etatQuestion(x); return !!p && (p.niv || 0) >= (x.t === "c" ? 2 : QUIZ_A_ECRIRE + 1); };
+function repondreQuestion(x, juste, ecrit) {
+  if (!x.id) return 0;
+  const p = etatQuestion(x) || {};
+  // une erreur à l’écrit renvoie au QCM pour une fois ; une erreur au QCM remet à zéro
+  const niv = juste ? Math.min(5, (p.niv || 0) + 1) : (ecrit ? 1 : 0);
+  Store.ecrire("progres", x.id, { quiz: true, chap: x.chap, t: x.t, niv, vu: (p.vu || 0) + 1, ok: (p.ok || 0) + (juste ? 1 : 0), ko: (p.ko || 0) + (juste ? 0 : 1), dernier: juste, last: todayKey() });
+  return niv;
+}
+function statsQuiz(chapIds) {
+  const st = { total: 0, vues: 0, maitrisees: 0, ecrire: 0 };
+  for (const id of chapIds) for (const x of questionsDuChap(id)) {
+    if (x.carte) continue;
+    st.total++;
+    if (etatQuestion(x)) st.vues++;
+    if (questionMaitrisee(x)) st.maitrisees++;
+    if (aEcrire(x)) st.ecrire++;
+  }
+  return st;
+}
+function normaliserReponse(s) {
+  return String(s == null ? "" : s).toLowerCase().replace(/œ/g, "oe").replace(/æ/g, "ae")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim().replace(/^(?:le|la|les|l) /, "");
+}
+// Ce qu’une question laisse voir : énoncé, explication et bonne réponse surlignée
+const texteVisible = (x) => ` ${normaliserReponse([x.q, x.e || "", x.t === "c" ? x.r : ""].join(" "))} `;
+const formesReponse = (x) => [x.r, ...(x.ok || [])].map(normaliserReponse).filter((f) => f.length >= (x.t === "c" ? 4 : 3));
+// En philo, une notion a peu de questions : on complète avec les repères, communs à toutes les notions
+const appointQuiz = (chapId) => (CHAP[chapId] && CHAP[chapId].mat === "philo" && chapId !== "ph-reperes" ? "ph-reperes" : null);
+const tailleQuiz = (chapId) => (appointQuiz(chapId) ? 8 : QUIZ_TAILLE);
+function choisirQuestions(chapId, n) {
+  n = n || tailleQuiz(chapId);
+  const auj = todayKey();
+  // ratées la dernière fois d’abord, puis jamais vues, puis les moins sûres
+  const rang = (x) => { const p = etatQuestion(x); if (!p) return 1; if (p.dernier === false) return 0; return 2 + (p.niv || 0) + (p.last === auj ? 6 : 0); };
+  const trier = (liste) => melanger(liste).sort((a, b) => rang(a) - rang(b));
+  const tous = [...trier(questionsDuChap(chapId)), ...(appointQuiz(chapId) ? trier(questionsDuChap(appointQuiz(chapId))) : [])];
+  const txt = new Map(tous.map((x) => [x, texteVisible(x)]));
+  const formes = new Map(tous.map((x) => [x, formesReponse(x)]));
+  // a « dévoile » b si l’énoncé ou l’explication de a contient la réponse de b
+  const devoile = (a, b) => a !== b && normaliserReponse(a.r) !== normaliserReponse(b.r) && formes.get(b).some((f) => txt.get(a).includes(` ${f} `));
+  const choisies = [];
+  for (const x of tous) {
+    if (choisies.length >= n) break;
+    if (choisies.some((y) => devoile(x, y) && devoile(y, x))) continue;
+    choisies.push(x);
+  }
+  // si a dévoile b, b passe avant a : la réponse n’est jamais donnée avant la question
+  const ordre = melanger(choisies);
+  for (let passe = 0; passe < 40; passe++) {
+    let change = false;
+    for (let i = 0; i < ordre.length && !change; i++) for (let j = i + 1; j < ordre.length && !change; j++) {
+      if (devoile(ordre[i], ordre[j])) { ordre.splice(i, 0, ordre.splice(j, 1)[0]); change = true; }
+    }
+    if (!change) break;
+  }
+  return ordre;
+}
+function choixQuestion(x) {
+  if (x.t === "d") {
+    // années proches, rangées dans l’ordre ; la place de la bonne est tirée au hasard pour qu’on ne puisse pas la deviner
+    const exclus = new Set([x.r, ...(x.ok || [])]);
+    const place = Math.floor(Math.random() * 4);
+    const cote = (signe, n) => {
+      const out = [];
+      const pieges = melanger(x.p.filter((a) => !exclus.has(a) && Math.sign(a - x.r) === signe));
+      const voisines = melanger([1, 2, 3, 4].map((d) => x.r + signe * d)).filter((a) => !exclus.has(a));
+      for (const a of [...pieges, ...voisines]) if (out.length < n && !out.includes(a)) out.push(a);
+      return out;
+    };
+    return [...cote(-1, place), x.r, ...cote(1, 3 - place)].sort((a, b) => a - b).map(String);
+  }
+  return melanger([x.r, ...melanger(x.p.filter((a) => a !== x.r)).slice(0, 3)]);
+}
+function ecartTexte(a, b) {
+  // nombre de fautes de frappe : lettre en trop, en moins, remplacée, ou deux lettres inversées
+  if (a === b) return 0;
+  if (!a.length) return b.length; if (!b.length) return a.length;
+  let avant = null, prec = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cour = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cour[j] = Math.min(prec[j] + 1, cour[j - 1] + 1, prec[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (avant && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) cour[j] = Math.min(cour[j], avant[j - 2] + 1);
+    }
+    avant = prec; prec = cour;
+  }
+  return prec[b.length];
+}
+const toleranceDe = (f) => (f.length >= 9 ? 2 : f.length >= 5 ? 1 : 0);
+function corrigerSaisie(x, saisie) {
+  const brut = String(saisie == null ? "" : saisie).trim();
+  if (!brut) return { vide: true, juste: false, exact: false };
+  if (x.t === "d") {
+    const m = brut.match(/\d{3,4}/);
+    const an = m ? Number(m[0]) : NaN;
+    if (an === x.r) return { juste: true, exact: true };
+    if ((x.ok || []).includes(an)) return { juste: true, exact: false };
+    return { juste: false, exact: false };
+  }
+  const s = normaliserReponse(brut);
+  if (!s) return { vide: true, juste: false, exact: false };
+  const mots = s.split(" ");
+  const candidats = [s, s.replace(/ /g, "")];
+  if (mots.length > 1 && mots.length <= 4 && mots[mots.length - 1].length >= 3) candidats.push(mots[mots.length - 1]); // prénom + nom
+  const variantes = (f) => [f, f.replace(/ /g, "")];
+  const bonnes = [x.r, ...(x.ok || [])].map(normaliserReponse).filter(Boolean);
+  let meilleur = Infinity;
+  for (const f of bonnes) for (const g of variantes(f)) for (const c of candidats) {
+    const d = ecartTexte(c, g);
+    if (d === 0) return { juste: true, exact: true };
+    if (d <= toleranceDe(g) && d < meilleur) meilleur = d;
+  }
+  if (meilleur === Infinity) return { juste: false, exact: false };
+  // une faute de frappe ne doit jamais faire accepter un piège
+  for (const f of (x.p || []).map(normaliserReponse).filter(Boolean)) for (const g of variantes(f)) for (const c of candidats) if (ecartTexte(c, g) <= meilleur) return { juste: false, exact: false };
+  return { juste: true, exact: false };
+}
+
 /* ---------- Séances et minutes ---------- */
 const sessionsTriees = () => [...S.sessions.values()].sort((a, b) => (b.fin || 0) - (a.fin || 0));
 function minutesParJour() {
@@ -1584,70 +2088,138 @@ function actCartes(zone, p, ctx) {
   afficher();
 }
 
-/* ---------- Quiz ---------- */
+/* ---------- Quiz ----------
+   Pièges serrés (dates proches, acteurs du même camp, notions qui se ressemblent).
+   Une date ou un nom réussi deux fois de suite en QCM revient sans propositions : il faut l’écrire. */
 function actQuiz(zone, p, ctx) {
   const ch = CHAP[p.chap];
-  const lancerCartes = () => {
-    const base = melanger(cartesDuChap(ch.id)).slice(0, 6);
-    const pool = toutesCartes().filter((c) => c.mat === ch.mat);
-    const questions = base.map((c) => {
-      const autres = melanger(pool.filter((x) => x.id !== c.id)).slice(0, 3).map((x) => x.verso);
-      const choix = melanger([c.verso, ...autres]);
-      return { q: `Quelle est la bonne réponse pour « ${c.recto} » ?`, choix, bonne: choix.indexOf(c.verso), explication: "", carte: c };
-    });
-    jouer(questions, "cartes");
+  const pieges = { hggsp: "dates très proches, acteurs du même camp, notions qui se ressemblent", philo: "notions qui se ressemblent et repères à ne pas confondre", go: "détails de l’épreuve qui se ressemblent" }[ch.mat] || "réponses qui se ressemblent";
+  const preparer = (x) => {
+    if (aEcrire(x)) return { x, ecrit: true };
+    const choix = choixQuestion(x);
+    return { x, ecrit: false, choix, bonne: choix.indexOf(String(x.r)) };
+  };
+  const lancer = () => {
+    const qs = choisirQuestions(ch.id);
+    if (!qs.length) {
+      vider(zone).append(h("div", { class: "vide" }, icone("quiz"), h("b", null, "Pas encore de questions pour ce chapitre."), h("p", { class: "sous" }, "Ajoute des cartes au chapitre : elles serviront de questions.")),
+        h("button", { class: "btn grand primaire", type: "button", onclick: () => ctx.fini({ type: "quiz", chap: ch.id, n: 0, ok: 0, resume: "Quiz : aucune question" }) }, ctx.libelleSuite || "Terminer"));
+      return;
+    }
+    jouer(qs.map(preparer));
   };
   const lancerIA = async () => {
     vider(zone).append(chargement("Claude prépare 6 questions…"));
     const deja = cartesDuChap(ch.id).map((c) => c.recto).join(" ; ");
-    const prompt = `Tu es professeur de ${MATIERES[ch.mat].long} en terminale générale en France (bac 2027). Crée un quiz de 6 questions à choix multiple sur le chapitre « ${ch.titre} ». Notions du cours à couvrir en priorité : ${deja}.
-Règles : niveau bac, conforme au programme officiel, une seule bonne réponse par question, 4 propositions plausibles et de longueur comparable, une explication de 1 à 2 phrases. Tutoie l’élève dans les explications. Pas de question piège sur des détails hors programme.
+    const prompt = `Tu es professeur de ${MATIERES[ch.mat].long} en terminale générale en France (bac 2027). Crée un quiz de 6 questions à choix multiple sur le chapitre « ${ch.titre} ». Notions du cours à couvrir en priorité : ${deja}.
+Règles : niveau bac, conforme au programme officiel, une seule bonne réponse par question, 4 propositions très proches les unes des autres (dates voisines, acteurs du même camp, notions qui se ressemblent) et de longueur comparable, une explication de 1 à 2 phrases. Tutoie l’élève dans les explications. Pas de question piège sur des détails hors programme.
 Réponds uniquement avec un objet JSON valide de la forme : {"questions":[{"q":"...","choix":["...","...","...","..."],"bonne":0,"explication":"..."}]}`;
     try {
       const r = await demanderJSON(prompt);
       const qs = (r.questions || []).filter((q) => q && q.q && Array.isArray(q.choix) && q.choix.length >= 2 && Number.isInteger(q.bonne) && q.bonne >= 0 && q.bonne < q.choix.length).slice(0, 8);
       if (!qs.length) throw { code: "format" };
-      jouer(qs, "ia");
+      jouer(qs.map((q) => {
+        const choix = q.choix.map(String);
+        return { x: { t: "c", q: String(q.q), r: choix[q.bonne], p: choix.filter((_, k) => k !== q.bonne), e: q.explication ? String(q.explication) : "", chap: ch.id }, ecrit: false, choix, bonne: q.bonne };
+      }));
     } catch (e) {
-      vider(zone).append(bandeau("alerte", messageErreurIA(e)), h("button", { class: "btn primaire", type: "button", onclick: lancerCartes }, "Faire le quiz à partir de tes cartes"));
+      vider(zone).append(bandeau("alerte", messageErreurIA(e)), h("button", { class: "btn primaire", type: "button", onclick: lancer }, "Faire le quiz à pièges"));
     }
   };
-  function jouer(questions, source) {
-    let i = 0, score = 0; const ratees = [];
+  function jouer(questions) {
+    let i = 0, score = 0, passages = 0;
+    const ratees = [];
+    const suivant = () => { i++; if (i < questions.length) afficher(); else finir(); };
     const afficher = () => {
-      const q = questions[i];
-      const expl = h("div", { class: "pile" });
-      const liste = h("div", { class: "qcm", role: "group" });
-      q.choix.forEach((txt, k) => liste.append(h("button", { type: "button", onclick: () => {
-        liste.querySelectorAll("button").forEach((b, j) => { b.disabled = true; if (j === q.bonne) b.classList.add("bon"); });
-        if (k === q.bonne) score++; else { liste.children[k].classList.add("mauvais"); ratees.push(q); }
+      const q = questions[i], x = q.x;
+      const expl = h("div", { class: "pile", "aria-live": "polite" });
+      const corriger = (juste, exact) => {
+        if (juste) score++; else ratees.push(q);
+        const avant = (etatQuestion(x) || {}).niv || 0;
+        const niv = repondreQuestion(x, juste, q.ecrit);
+        const passe = !q.ecrit && juste && (x.t === "d" || x.t === "n") && avant < QUIZ_A_ECRIRE && niv >= QUIZ_A_ECRIRE;
+        if (passe) passages++;
+        const rep = String(x.r);
+        const titre = juste
+          ? (exact ? "Bonne réponse." : x.t === "d" ? `Accepté, mais retiens ${rep}.` : `Accepté. Orthographe exacte : ${rep}.`)
+          : (q.ecrit ? `${q.saisie ? "Raté." : "À apprendre."} La réponse : ${rep}.` : "Raté.");
+        const bouton = h("button", { class: "btn primaire", type: "button", onclick: suivant }, i + 1 < questions.length ? "Question suivante" : "Voir le résultat");
         expl.append(
-          h("p", { class: k === q.bonne ? "" : "" }, h("b", null, k === q.bonne ? "Bonne réponse. " : "Raté. "), q.explication || (q.carte ? q.carte.verso : "")),
-          h("button", { class: "btn primaire", type: "button", onclick: () => { i++; i < questions.length ? afficher() : finir(); } }, i + 1 < questions.length ? "Question suivante" : "Voir le résultat"));
-        expl.querySelector(".btn").focus({ preventScroll: true });
-      } }, txt)));
-      vider(zone).append(h("div", { class: "compteur" }, h("span", null, `Question ${i + 1} sur ${questions.length}`), h("span", { class: "tnum" }, `${score} bonne${score > 1 ? "s" : ""}`)),
-        h("div", { class: "flash" }, h("div", { class: "q", style: "font-size:1.2rem" }, q.q)), liste, expl);
+          h("p", { class: "retour-q" }, h("b", null, titre), x.e ? " " + x.e : ""),
+          passe ? h("p", { class: "petit" }, "Deux fois de suite : la prochaine fois, plus de propositions, il faudra l’écrire.") : null,
+          bouton);
+        bouton.focus({ preventScroll: true });
+        try { bouton.scrollIntoView({ block: "nearest" }); } catch (e) { /* ignoré */ }
+      };
+      vider(zone).append(
+        h("div", { class: "compteur" }, h("span", null, `Question ${i + 1} sur ${questions.length}`), h("span", { class: "tnum" }, `${score} bonne${score > 1 ? "s" : ""}`)),
+        h("div", { class: "flash quiz-q" },
+          q.ecrit ? h("div", { class: "puces" }, h("span", { class: "puce bac" }, x.t === "d" ? "Sans propositions : écris l’année" : "Sans propositions : écris le nom")) : null,
+          h("div", { class: "q" }, x.q)));
+      if (!q.ecrit) {
+        const liste = h("div", { class: "qcm" + (x.t === "d" ? " dates" : ""), role: "group", "aria-label": "Propositions" });
+        q.choix.forEach((txt, k) => liste.append(h("button", { type: "button", onclick: () => {
+          liste.querySelectorAll("button").forEach((b, j) => { b.disabled = true; if (j === q.bonne) b.classList.add("bon"); });
+          if (k !== q.bonne) liste.children[k].classList.add("mauvais");
+          corriger(k === q.bonne, true);
+        } }, txt)));
+        zone.append(liste, expl);
+        return;
+      }
+      const champ = h("input", { type: "text", id: "rep-quiz", class: "saisie-quiz", autocomplete: "off", autocapitalize: "off", autocorrect: "off", spellcheck: "false", enterkeyhint: "done",
+        inputmode: x.t === "d" ? "numeric" : "text", maxlength: x.t === "d" ? "4" : "80", placeholder: x.t === "d" ? "4 chiffres" : "Le nom" });
+      const bValider = h("button", { class: "btn primaire", type: "submit" }, "Valider");
+      const bPasse = h("button", { class: "btn", type: "button" }, "Je ne sais pas");
+      const terminer = (juste, exact, saisie) => {
+        q.saisie = saisie;
+        champ.disabled = true; bValider.disabled = true; bPasse.disabled = true;
+        champ.classList.add(juste ? "bon" : "mauvais");
+        corriger(juste, exact);
+      };
+      bPasse.addEventListener("click", () => terminer(false, false, ""));
+      const form = h("form", { class: "pile", novalidate: true, onsubmit: (e) => {
+        e.preventDefault();
+        if (champ.disabled) return;
+        const res = corrigerSaisie(x, champ.value);
+        if (res.vide) { toast("Écris ta réponse, ou touche « Je ne sais pas »."); champ.focus(); return; }
+        terminer(res.juste, res.exact, champ.value.trim());
+      } }, h("label", { class: "champ", for: "rep-quiz" }, x.t === "d" ? "L’année" : "Le nom", champ), h("div", { class: "rangee etire" }, bPasse, bValider));
+      zone.append(form, expl);
+      setTimeout(() => { try { champ.focus({ preventScroll: true }); } catch (e) { /* ignoré */ } }, 60);
     };
+    const aRetenir = (x) => { const r = String(x.r); return !x.e ? r : x.e.includes(r) ? x.e : `${r} — ${x.e}`; };
     const finir = () => {
+      const n = questions.length;
+      const ecrites = questions.filter((q) => q.ecrit).length;
       const coches = ratees.map((q) => ({ q, ok: true }));
       vider(zone).append(
-        h("div", { class: "tampon-zone" }, h("div", { class: "tampon" + (score >= questions.length * 0.7 ? " bleu" : "") }, `${score} / ${questions.length}`)),
+        h("div", { class: "tampon-zone" },
+          h("div", { class: "tampon" + (score >= n * 0.7 ? " bleu" : "") }, `${score} / ${n}`),
+          h("p", null, score === n ? "Sans faute." : score >= n * 0.7 ? "Solide. Les ratées reviendront en premier au prochain quiz." : "Pas encore su. Les ratées reviendront en premier au prochain quiz."),
+          passages ? h("p", { class: "sous" }, `${pluriel(passages, "question")} ${passages > 1 ? "passent" : "passe"} à l’écrit : au prochain quiz, plus de propositions.`) : null),
         ratees.length ? h("div", { class: "carte" }, h("h3", { class: "h2" }, "Ajouter tes erreurs au carnet ?"),
-          ...coches.map((x) => h("label", { class: "case" }, h("input", { type: "checkbox", checked: true, onchange: (e) => { x.ok = e.target.checked; } }), h("span", null, x.q.q)))) : null,
+          ...coches.map((c) => h("label", { class: "case" }, h("input", { type: "checkbox", checked: true, onchange: (e) => { c.ok = e.target.checked; } }),
+            h("span", null, c.q.x.q, h("span", { class: "petit", style: "display:block" }, "Réponse : " + c.q.x.r))))) : null,
         h("button", { class: "btn grand primaire", type: "button", onclick: () => {
-          coches.filter((x) => x.ok).forEach((x) => ajouterErreur({ mat: ch.mat, chap: ch.id, type: "cours", description: x.q.q, aRetenir: x.q.choix[x.q.bonne], source: "quiz" }));
-          ctx.fini({ type: "quiz", chap: ch.id, n: questions.length, ok: score, resume: `Quiz ${score}/${questions.length}` });
+          coches.filter((c) => c.ok).forEach((c) => ajouterErreur({ mat: ch.mat, chap: c.q.x.chap || ch.id, type: "cours", description: c.q.x.q, aRetenir: aRetenir(c.q.x), source: "quiz" }));
+          ctx.fini({ type: "quiz", chap: ch.id, n, ok: score, resume: `Quiz ${score}/${n}${ecrites ? ` · ${ecrites} à l’écrit` : ""}` });
         } }, ctx.libelleSuite || "Terminer"));
     };
     afficher();
   }
+
+  const qs = questionsDuChap(ch.id);
+  const st = statsQuiz([ch.id]);
+  const avecEcrit = qs.some((x) => x.t === "d" || x.t === "n");
+  const nb = Math.min(tailleQuiz(ch.id), qs.length + (appointQuiz(ch.id) ? questionsDuChap(appointQuiz(ch.id)).length : 0));
   vider(zone).append(
     h("div", { class: "sujet" }, h("div", { class: "petit" }, MATIERES[ch.mat].nom), h("div", { class: "t" }, ch.court)),
+    h("p", null, `${nb} questions à pièges : ${pieges}.`),
+    avecEcrit ? h("p", { class: "sous" }, "Une date ou un nom trouvé deux fois de suite revient sans propositions : il faudra l’écrire toi-même.") : null,
+    st.vues ? h("p", { class: "petit" }, `${st.maitrisees}/${st.total} questions maîtrisées${avecEcrit ? ` · ${st.ecrire} à écrire sans aide` : ""}`) : null,
     h("div", { class: "pile" },
-      S.ia ? h("button", { class: "btn grand primaire", type: "button", onclick: lancerIA }, icone("ia"), "Quiz préparé par Claude") : null,
-      h("button", { class: "btn grand" + (S.ia ? "" : " primaire"), type: "button", onclick: lancerCartes }, icone("cartes"), "Quiz rapide avec tes cartes")),
-    h("p", { class: "petit" }, S.ia ? "Le quiz de Claude est plus varié (une quinzaine de secondes de préparation). Le quiz rapide mélange les définitions de tes cartes." : "Les définitions de tes cartes sont mélangées : retrouve la bonne.")
+      h("button", { class: "btn grand primaire", type: "button", onclick: lancer }, icone("quiz"), "Lancer le quiz"),
+      S.ia ? h("button", { class: "btn grand", type: "button", onclick: lancerIA }, icone("ia"), "Quiz préparé par Claude") : null)
   );
 }
 
@@ -2344,6 +2916,7 @@ function ouvrirChapitre(id) {
   ouvrirFeuille({ titre: `${MATIERES[c.mat].nom} · ${c.court}`, construire: (f) => {
     const dessiner = () => {
       const st = statsCartesChap(id);
+      const sq = statsQuiz([id]);
       const m = maitriseDe(id);
       const der = derniereSeanceChap(id);
       const errs = [...S.erreurs.values()].filter((e) => e.chap === id).length;
@@ -2354,7 +2927,7 @@ function ouvrirChapitre(id) {
         c.bac ? null : h("p", { class: "sous" }, "Ce chapitre ne peut pas tomber à l’écrit cette année, mais il compte pour tes contrôles, tes bulletins et ton dossier Parcoursup."),
         h("div", null, h("label", { class: "champ" }, "Où tu en es sur ce chapitre"),
           h("div", { class: "segment", role: "group" }, NIVEAUX.map((lab, k) => h("button", { type: "button", "data-m": String(k), "aria-pressed": m === k ? "true" : "false", onclick: () => { Store.ecrire("chapitres", id, { maitrise: k, maj: todayKey() }); setTimeout(dessiner, 0); } }, h("span", { class: "pt" }), lab))),
-          h("p", { class: "petit", style: "margin-top:6px" }, `${st.sues}/${st.total} cartes sues · ${st.vues} déjà vues · ${pluriel(errs, "erreur")} notée${errs > 1 ? "s" : ""}${der ? " · dernière séance " + fmtDate(der) : ""}`)),
+          h("p", { class: "petit", style: "margin-top:6px" }, `${st.sues}/${st.total} cartes sues · ${st.vues} déjà vues${sq.vues ? ` · quiz : ${sq.maitrisees}/${sq.total} maîtrisées` : ""} · ${pluriel(errs, "erreur")} notée${errs > 1 ? "s" : ""}${der ? " · dernière séance " + fmtDate(der) : ""}`)),
         h("div", { class: "rangee etire" },
           h("button", { class: "btn", type: "button", onclick: () => { f.fermer(true); ouvrirActivite("cartes", { mode: "chap", chap: id }); } }, icone("cartes"), "Cartes"),
           h("button", { class: "btn", type: "button", onclick: () => { f.fermer(true); ouvrirActivite("quiz", { chap: id }); } }, icone("quiz"), "Quiz")),
@@ -2538,7 +3111,11 @@ function vueProgres() {
     ...["hggsp", "philo"].filter(epreuveActive).map((mat) => h("div", { class: "pile", style: "gap:6px" },
       h("b", null, MATIERES[mat].long),
       h("div", { class: "chips-maitrise" }, CHAPITRES.filter((c) => c.mat === mat).map((c) => h("button", { class: `chip-m m${maitriseDe(c.id)}${c.bac ? "" : " hors"}`, type: "button", title: c.titre + (c.bac ? "" : " (hors épreuve 2027)"), onclick: () => ouvrirChapitre(c.id) }, h("span", { class: "pt" }), c.court.replace(/^T\d · /, "")))))),
-    h("p", { class: "petit" }, "Bordure en pointillés : hors épreuve écrite 2027.")));
+    h("p", { class: "petit" }, "Bordure en pointillés : hors épreuve écrite 2027."),
+    (() => {
+      const q = statsQuiz(CHAPITRES.filter((c) => epreuveActive(c.mat)).map((c) => c.id));
+      return h("p", { class: "petit" }, q.vues ? `Quiz : ${q.maitrisees} questions maîtrisées sur ${q.total} · ${q.ecrire} dates et noms qu’il écrit sans propositions.` : `Quiz : ${q.total} questions à pièges, aucune encore tentée.`);
+    })()));
 
   /* Mot du frère */
   grille.append(h("section", { class: "carte mot", "aria-labelledby": "t-mot" },
@@ -2827,6 +3404,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden && !F
 rendre();
 Store.init();
 if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(() => {});
+// Accès réservé aux tests automatisés (navigateur piloté) : rien n’est exposé sur un vrai téléphone
+if (navigator.webdriver) window.__carnet = { questionsDuChap, choisirQuestions, ouvrirChapitre, ouvrirActivite, Store };
 
 })();
 </script>
