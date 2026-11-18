@@ -328,6 +328,14 @@ textarea.copie {
 .etapes span { font-size: var(--t-xs); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--ligne-forte); color: var(--encre-2); background: var(--feuille); }
 .etapes span.encours { background: var(--bic); color: var(--sur-bic); border-color: var(--bic); }
 .etapes span.fini { text-decoration: line-through; }
+.pause-zone { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 28px 0 8px; }
+.pause-temps { font-family: var(--f-display); font-size: 4.5rem; font-weight: 700; line-height: 1; color: var(--bic); }
+.pause-temps.depasse { color: var(--rouge); }
+.pause-msg { max-width: 34ch; font-size: var(--t-l); }
+.fin-bloc { position: sticky; top: 0; z-index: 2; }
+.plan li.pause { padding: 4px 0; border-top: 0; }
+.plan li.pause .ico { background: transparent; color: var(--encre-3); }
+.plan li.pause .lbl, .plan li.pause .min { font-size: var(--t-xs); color: var(--encre-3); font-weight: 400; }
 
 /* cartes mémoire */
 .flash { min-height: 230px; display: flex; flex-direction: column; gap: 14px; justify-content: center; padding: 22px 18px; border-radius: 16px; background: var(--feuille); border: 1px solid var(--ligne-forte); box-shadow: var(--ombre); }
@@ -1353,7 +1361,8 @@ const icone = (n, cls) => h("span", { class: cls || null, "aria-hidden": "true",
 /* ---------- État ---------- */
 const DEFAUTS = {
   prenom: "",
-  objectif: 45,
+  objectif: 45,            // ancien objectif en minutes, gardé pour les jours d’avant les blocs
+  rythme: { mode: "montee", debut: null },
   moyennePrecedente: 9,
   epreuves: { philo: true, hggsp: true, go: true },
   lva: "LV A", lvb: "LV B",
@@ -1506,6 +1515,8 @@ function fusionConfig(d) {
   if (!Array.isArray(c.questionsGO)) c.questionsGO = ["", ""];
   if (!Array.isArray(c.echeances)) c.echeances = [];
   c.objectif = clamp(Number(c.objectif) || 45, 10, 240);
+  const r = Object.assign({}, DEFAUTS.rythme, (d && d.rythme) || {});
+  c.rythme = { mode: [2, 3, 4].includes(r.mode) ? r.mode : "montee", debut: /^\d{4}-\d{2}-\d{2}$/.test(r.debut || "") ? r.debut : null };
   return c;
 }
 const majConfig = (changes) => Store.ecrire("app", "config", Object.assign({}, S.config, changes));
@@ -1881,12 +1892,13 @@ function minutesParJour() {
 }
 const minutesDuJour = (k) => minutesParJour().get(k) || 0;
 function series() {
-  const mpj = minutesParJour(); const obj = S.config.objectif;
+  const mpj = minutesParJour();
   const auj = todayKey();
-  let k = (mpj.get(auj) || 0) >= obj ? auj : addDays(auj, -1);
+  const ok = (d) => (mpj.get(d) || 0) >= objectifDuJour(d);
+  let k = ok(auj) ? auj : addDays(auj, -1);
   let actuelle = 0;
-  while ((mpj.get(k) || 0) >= obj) { actuelle++; k = addDays(k, -1); }
-  const jours = [...mpj.entries()].filter(([, v]) => v >= obj).map(([d]) => d).sort();
+  while (ok(k)) { actuelle++; k = addDays(k, -1); }
+  const jours = [...mpj.keys()].filter(ok).sort();
   let record = 0, cur = 0, prev = null;
   for (const d of jours) { cur = prev && daysBetween(prev, d) === 1 ? cur + 1 : 1; record = Math.max(record, cur); prev = d; }
   return { actuelle, record: Math.max(record, actuelle) };
@@ -1970,15 +1982,6 @@ function chapitreDuSoir() {
   try { localStorage.setItem("carnet.chapSoir", JSON.stringify({ date: auj, id: choisi.id })); } catch (e) { /* ignoré */ }
   return choisi;
 }
-function changerChapitreDuSoir() {
-  const actuel = chapitreDuSoir();
-  const classes = classementChapitres();
-  const i = classes.findIndex((c) => actuel && c.id === actuel.id);
-  const suivant = classes[(i + 1) % classes.length];
-  try { localStorage.setItem("carnet.chapSoir", JSON.stringify({ date: todayKey(), id: suivant.id })); } catch (e) { /* ignoré */ }
-  S.chapSoirSecours = suivant.id;
-  planifierRendu();
-}
 function typeExercicePour(mat) {
   return { hggsp: "hggsp-dissert", philo: "philo-dissert", go: "go-jury" }[mat];
 }
@@ -1990,39 +1993,84 @@ const POURQUOI = {
   erreurs: "Relire ses erreurs, c’est ce qui évite de les refaire le jour J.",
   bilan: "Deux questions pour garder la trace de ta soirée."
 };
-function planDuSoir() {
-  const obj = S.config.objectif;
-  const fait = minutesDuJour(todayKey());
-  const reste = Math.max(15, obj - fait);
-  const ch = S.chapSoirSecours && CHAP[S.chapSoirSecours] ? CHAP[S.chapSoirSecours] : chapitreDuSoir();
-  const etapes = [];
-  const dues = cartesDues().length;
-  let t = reste;
-  if (dues > 0) { const m = clamp(Math.ceil(dues * 0.6), 4, 10); etapes.push({ type: "cartes", mode: "dues", minutes: m, titre: "Cartes à revoir", detail: pluriel(dues, "carte") + " prévue" + (dues > 1 ? "s" : "") + " aujourd’hui" }); t -= m; }
-  const err = erreursNonRelues().length;
-  const tErr = err ? 4 : 0;
-  const tBilan = 2;
-  const principal = Math.max(10, t - tErr - tBilan);
-  if (ch) {
-    const m = maitriseDe(ch.id);
-    const nom = `${MATIERES[ch.mat].nom} · ${ch.court}`;
-    if (ch.mat === "go") {
-      etapes.push({ type: "exercice", chap: ch.id, exo: "go-jury", minutes: principal, titre: "Grand oral : questions du jury", detail: nom });
-    } else if (m <= 1) {
-      const a = Math.round(principal * 0.55);
-      etapes.push({ type: "cartes", mode: "chap", chap: ch.id, minutes: a, titre: "Apprendre avec les cartes", detail: nom });
-      etapes.push({ type: "quiz", chap: ch.id, minutes: principal - a, titre: "Vérifier avec un quiz", detail: nom });
-    } else if (m === 2) {
-      etapes.push({ type: "exercice", chap: ch.id, exo: typeExercicePour(ch.mat), minutes: principal, titre: "S’entraîner : exercice type bac", detail: nom });
-    } else {
-      const a = Math.round(principal * 0.35);
-      etapes.push({ type: "explique", chap: ch.id, minutes: a, titre: "Explique-le avec tes mots", detail: nom });
-      etapes.push({ type: "exercice", chap: ch.id, exo: typeExercicePour(ch.mat), minutes: principal - a, titre: "Exercice type bac", detail: nom });
-    }
-  }
-  if (tErr) etapes.push({ type: "erreurs", minutes: tErr, titre: "Relire tes erreurs", detail: pluriel(err, "erreur") + " à relire" });
-  etapes.push({ type: "bilan", minutes: tBilan, titre: "Bilan de la soirée", detail: "Concentration et temps TikTok" });
-  return { chap: ch, etapes, total: etapes.reduce((a, e) => a + e.minutes, 0) };
+/* ---------- Séance en blocs : 25 min de travail, 5 min de pause ----------
+   Montée sur 3 semaines : 2 blocs, puis 3, puis 4 (1 h 55 avec les pauses).
+   4 blocs = HGGSP apprendre · HGGSP s’entraîner · HGGSP exercice type bac · philo. */
+const DUREE_BLOC = 25, DUREE_PAUSE = 5;
+const debutBlocs = () => (S.config.rythme || {}).debut || todayKey();
+function nbBlocsDuJour(d) {
+  const mode = (S.config.rythme || {}).mode;
+  if ([2, 3, 4].includes(mode)) return mode;
+  const j = daysBetween(debutBlocs(), d || todayKey());
+  return j < 7 ? 2 : j < 14 ? 3 : 4;
+}
+function semaineMontee(d) {
+  if ((S.config.rythme || {}).mode !== "montee") return null;
+  return clamp(Math.floor(daysBetween(debutBlocs(), d || todayKey()) / 7) + 1, 1, 3);
+}
+const dureeSeance = (nb) => nb * DUREE_BLOC + Math.max(0, nb - 1) * DUREE_PAUSE;
+// avant le passage aux blocs, chaque jour garde l’ancien objectif en minutes
+const objectifDuJour = (d) => { d = d || todayKey(); return d < debutBlocs() ? S.config.objectif : nbBlocsDuJour(d) * DUREE_BLOC; };
+const libelleBlocs = (nb) => `${pluriel(nb, "bloc")} de ${DUREE_BLOC} min`;
+function blocsFaitsDuJour(d) {
+  let n = 0;
+  for (const s of S.sessions.values()) if (s.date === d && s.blocs && !s.blocs.bonus) n += s.blocs.faits || 0;
+  return n;
+}
+
+const classementMat = (mat) => classementChapitres().filter((c) => c.mat === mat);
+function lireMemoChap() {
+  let memo = null;
+  try { memo = JSON.parse(localStorage.getItem("carnet.chapSoirMat") || "null"); } catch (e) { memo = null; }
+  return memo && memo.date === todayKey() ? memo : { date: todayKey() };
+}
+function chapitreDuSoirMat(mat) {
+  const memo = lireMemoChap();
+  if (memo[mat] && CHAP[memo[mat]] && CHAP[memo[mat]].mat === mat) return CHAP[memo[mat]];
+  const c = classementMat(mat)[0];
+  if (!c) return null;
+  memo[mat] = c.id;
+  try { localStorage.setItem("carnet.chapSoirMat", JSON.stringify(memo)); } catch (e) { /* ignoré */ }
+  return c;
+}
+function changerChapitreMat(mat) {
+  const actuel = chapitreDuSoirMat(mat), liste = classementMat(mat);
+  if (!liste.length) return;
+  const i = liste.findIndex((c) => actuel && c.id === actuel.id);
+  const memo = lireMemoChap(); memo[mat] = liste[(i + 1) % liste.length].id;
+  try { localStorage.setItem("carnet.chapSoirMat", JSON.stringify(memo)); } catch (e) { /* ignoré */ }
+  planifierRendu();
+}
+
+const ROLES_BLOC = {
+  apprendre: { nom: "Apprendre", court: "Apprendre", detail: "cartes, explique-le, quiz à pièges" },
+  entrainer: { nom: "S’entraîner", court: "S’entraîner", detail: "erreurs, quiz à pièges, révision d’un autre chapitre" },
+  bac: { nom: "Exercice type bac", court: "Exercice bac", detail: "dissertation ou étude critique, puis quiz" },
+  entrainerBac: { nom: "S’entraîner", court: "S’entraîner", detail: "erreurs, quiz à pièges, exercice type bac" },
+  hggsp2: { nom: "Apprendre et se tester", court: "HGGSP", detail: "cartes, quiz à pièges, explique-le" },
+  philo: { nom: "Notion et repères", court: "Philo", detail: "cartes, quiz à pièges et repères, explique-le" }
+};
+// Un bloc = une file d’activités, puis des révisions en boucle jusqu’à la fin des 25 min
+function planSeance(nb) {
+  nb = nb || nbBlocsDuJour();
+  const X = epreuveActive("hggsp") ? chapitreDuSoirMat("hggsp") : null;
+  const P = epreuveActive("philo") ? chapitreDuSoirMat("philo") : null;
+  const autres = (mat, ch, n) => classementMat(mat).filter((c) => !ch || c.id !== ch.id).slice(0, n).map((c) => c.id);
+  const revH = X ? [X.id, ...autres("hggsp", X, 2)] : [];
+  const revP = P ? [...new Set([P.id, ...autres("philo", P, 1), ...(CHAP["ph-reperes"] ? ["ph-reperes"] : [])])] : [];
+  const Y = revH[1] || (X && X.id);
+  const bloc = (role, mat, chap, file, revisions) => ({ role, mat, chap, file, revisions, titre: `${MATIERES[mat].nom} · ${ROLES_BLOC[role].nom}` });
+  const A = () => bloc("apprendre", "hggsp", X.id, [["dues"], ["cartes", X.id], ["explique", X.id], ["quiz", X.id]], revH);
+  const E = () => bloc("entrainer", "hggsp", X.id, [["dues"], ["erreurs"], ["quiz", X.id], ["quiz", Y], ["explique", Y]], [Y, ...revH]);
+  const B = () => bloc("bac", "hggsp", X.id, [["exercice", X.id]], revH);
+  const EB = () => bloc("entrainerBac", "hggsp", X.id, [["erreurs"], ["quiz", X.id], ["exercice", X.id]], revH);
+  const H2 = () => bloc("hggsp2", "hggsp", X.id, [["dues"], ["cartes", X.id], ["quiz", X.id], ["explique", X.id]], revH);
+  const Ph = () => bloc("philo", "philo", P.id, [["dues"], ["cartes", P.id], ["quiz", P.id], ["explique", P.id], ...(maitriseDe(P.id) >= 2 ? [["exercice", P.id]] : [])], revP);
+  let blocs = [];
+  if (X && P) blocs = nb >= 4 ? [A(), E(), B(), Ph()] : nb === 3 ? [A(), EB(), Ph()] : nb === 2 ? [H2(), Ph()] : [E()];
+  else if (X) blocs = (nb === 1 ? [E()] : [A(), E(), B(), E()]).slice(0, nb);
+  else if (P) blocs = Array.from({ length: nb }, Ph);
+  return { nb: blocs.length, blocs, chapH: X, chapP: P, duree: dureeSeance(blocs.length) };
 }
 
 /* ---------- Échéances ---------- */
@@ -2208,6 +2256,7 @@ Réponds uniquement avec un objet JSON valide de la forme : {"questions":[{"q":"
     afficher();
   }
 
+  if (p.direct) { lancer(); return; } // dans un bloc de la séance : pas d’écran d’accueil
   const qs = questionsDuChap(ch.id);
   const st = statsQuiz([ch.id]);
   const avecEcrit = qs.some((x) => x.t === "d" || x.t === "n");
@@ -2527,7 +2576,7 @@ function enregistrerSeance({ etapes, minutes, chrono, concentration, commentaire
   if (minutes < 1) return null;
   const id = uid();
   Store.ecrire("sessions", id, {
-    date: dateKey(new Date(chrono.debut)), debut: chrono.debut, fin: Date.now(), minutes, objectif: S.config.objectif,
+    date: dateKey(new Date(chrono.debut)), debut: chrono.debut, fin: Date.now(), minutes, objectif: objectifDuJour(dateKey(new Date(chrono.debut))),
     etapes: etapes.map((e) => ({ type: e.type, chap: e.chap || null, mat: e.mat || (e.chap && CHAP[e.chap] ? CHAP[e.chap].mat : null), resume: e.resume || "", note: e.note ?? null })),
     sorties: chrono.sorties, decroches: chrono.decroches, concentration: concentration ?? null, commentaire: commentaire || "", origine
   });
@@ -2572,7 +2621,7 @@ function ouvrirActivite(type, params) {
 }
 function afficherFin(zone, minutes, resume, fermer) {
   const auj = minutesDuJour(todayKey());
-  const obj = S.config.objectif;
+  const obj = objectifDuJour();
   const atteint = auj >= obj;
   vider(zone).append(
     h("div", { class: "tampon-zone" },
@@ -2583,108 +2632,371 @@ function afficherFin(zone, minutes, resume, fermer) {
 }
 
 /* ============================================================
-   LA SÉANCE GUIDÉE DU SOIR
+   LA SÉANCE DU SOIR EN BLOCS
+   25 min de travail · 5 min de pause · 25 min… Un bloc ne s’arrête
+   pas quand une activité finit : l’appli enchaîne la suivante jusqu’au
+   bout des 25 minutes. La séance est enregistrée après chaque bloc et
+   reprend là où elle en était si l’appli a été fermée.
    ============================================================ */
-function lancerSoiree() {
+const cleSeance = () => "carnet.seance." + (CLE_CARNET || "local");
+function lireSeanceEnCours() {
+  try {
+    const e = JSON.parse(localStorage.getItem(cleSeance()) || "null");
+    if (!e || e.v !== 1 || e.phase === "fini" || e.phase === "avant") return null;
+    if (e.date !== todayKey() && Date.now() - (e.maj || 0) > 6 * 3600000) return null; // séance d’un autre jour
+    return e;
+  } catch (er) { return null; }
+}
+const oublierSeance = () => { try { localStorage.removeItem(cleSeance()); } catch (e) { /* ignoré */ } };
+
+/* Petit signal sonore (et vibration sur Android) à la fin d’un bloc et d’une pause */
+let sonCtx = null;
+function preparerSon() {
+  try { if (!sonCtx) sonCtx = new (window.AudioContext || window.webkitAudioContext)(); if (sonCtx.state === "suspended") sonCtx.resume(); } catch (e) { sonCtx = null; }
+}
+function bip(n) {
+  try { if (navigator.vibrate) navigator.vibrate([220, 120, 220]); } catch (e) { /* ignoré */ }
+  if (!sonCtx || document.hidden) return;
+  try {
+    const t = sonCtx.currentTime;
+    for (let k = 0; k < (n || 2); k++) {
+      const o = sonCtx.createOscillator(), g = sonCtx.createGain(), t0 = t + k * 0.35;
+      o.frequency.value = 880; o.connect(g); g.connect(sonCtx.destination);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
+      o.start(t0); o.stop(t0 + 0.3);
+    }
+  } catch (e) { /* ignoré */ }
+}
+const heureFr = (d) => d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", " h ");
+
+function activiteDeBloc(entree, etat) {
+  const [type, chap] = entree;
+  if (type === "dues") return !etat.duesFait && cartesDues().length ? { type: "cartes", mode: "dues", titre: "Échauffement : cartes à revoir", dues: true } : null;
+  if (type === "erreurs") return erreursNonRelues().length ? { type: "erreurs", titre: "Relire tes erreurs" } : null;
+  if (!CHAP[chap]) return null;
+  const nom = CHAP[chap].court;
+  if (type === "cartes") return paquetChapitre(chap).length ? { type: "cartes", mode: "chap", chap, titre: `Apprendre avec les cartes · ${nom}` } : null;
+  if (type === "quiz") return questionsDuChap(chap).length ? { type: "quiz", chap, direct: true, titre: `Quiz à pièges · ${nom}` } : null;
+  if (type === "explique") return cartesDuChap(chap).length ? { type: "explique", chap, titre: `Explique-le avec tes mots · ${nom}` } : null;
+  if (type === "exercice") return { type: "exercice", chap, titre: `Exercice type bac · ${nom}` };
+  return null;
+}
+
+function lancerSoiree(opts) {
+  opts = opts || {};
   if (S.lectureSeule) { toast("Lecture seule : tu ne peux pas lancer de séance avec ce compte."); return; }
-  const plan = planDuSoir();
+  let etat = opts.reprise || null;
+  if (!etat) {
+    const nb = nbBlocsDuJour();
+    const faits = blocsFaitsDuJour(todayKey());
+    const bonus = !!opts.bonus || faits >= nb;
+    const plan = planSeance(bonus ? 1 : nb);
+    const blocs = bonus ? plan.blocs : plan.blocs.slice(Math.min(faits, plan.blocs.length - 1));
+    if (!blocs.length) { toast("Aucune matière à réviser : coche tes épreuves dans l’onglet Plus."); return; }
+    if (!(S.config.rythme || {}).debut) majConfig({ rythme: Object.assign({}, S.config.rythme, { debut: todayKey() }) });
+    etat = {
+      v: 1, id: uid(), date: todayKey(), debut: Date.now(), maj: Date.now(), bonus,
+      plan: { nb: blocs.length, blocs }, iBloc: 0, phase: "avant", iFile: 0, kRempl: 0,
+      msBlocs: [], msEnCours: 0, pauses: [], pauseDebut: null, resultats: [],
+      duesFait: false, encours: null, derniere: null, sorties: 0, decroches: 0, quitteA: null
+    };
+  }
+  const somme = (t) => t.reduce((a, b) => a + b, 0);
   const chrono = new Chrono();
+  chrono.debut = etat.debut;
+  chrono.sorties = etat.sorties || 0; chrono.decroches = etat.decroches || 0;
   chrono.surRetour = (ms) => demanderRetour(chrono, ms);
-  const resultats = [];
-  let iEtape = -1, termine = false, inter = null, nettoyage = null;
-  const objectifMs = plan.total * 60000;
+  chrono.crediter(somme(etat.msBlocs) + (etat.phase === "bloc" ? etat.msEnCours || 0 : 0));
+  let debutBlocMs = somme(etat.msBlocs), chronoLance = false, alerte = false, jeton = 0, tours = 0;
+  let inter = null, nettoyage = null, verrou = null, pauseEls = null, f = null, barre = null, chips = null;
+
+  const blocActuel = () => etat.plan.blocs[Math.min(etat.iBloc, etat.plan.blocs.length - 1)];
+  const msBloc = () => chrono.ms() - debutBlocMs;
+  const reste = () => DUREE_BLOC * 60000 - msBloc();
+  const sauver = () => {
+    if (etat.phase === "fini") return;
+    etat.msEnCours = etat.phase === "bloc" ? Math.max(0, msBloc()) : 0;
+    etat.sorties = chrono.sorties; etat.decroches = chrono.decroches; etat.maj = Date.now();
+    try { localStorage.setItem(cleSeance(), JSON.stringify(etat)); } catch (e) { /* ignoré */ }
+  };
+  // la séance est écrite en base après chaque bloc, chaque pause et à l’arrêt : rien ne se perd
+  const ecrire = (extra) => {
+    const minutes = Math.round((somme(etat.msBlocs) + (etat.phase === "bloc" ? Math.max(0, msBloc()) : 0)) / 60000);
+    if (minutes < 1) return;
+    const avant = S.sessions.get(etat.id) || {};
+    Store.ecrire("sessions", etat.id, {
+      date: etat.date, debut: etat.debut, fin: Date.now(), minutes, objectif: objectifDuJour(etat.date),
+      format: "blocs", blocs: { prevus: etat.plan.nb, faits: etat.msBlocs.length, bonus: etat.bonus },
+      pauses: etat.pauses, pauseDepassee: somme(etat.pauses.map((x) => x.depasse || 0)),
+      etapes: etat.resultats.map((e) => ({ type: e.type, chap: e.chap || null, mat: e.mat || (e.chap && CHAP[e.chap] ? CHAP[e.chap].mat : null), resume: e.resume || "", note: e.note ?? null, bloc: e.bloc || null })),
+      sorties: chrono.sorties, decroches: chrono.decroches,
+      concentration: extra && "concentration" in extra ? extra.concentration : (avant.concentration ?? null),
+      commentaire: extra && "commentaire" in extra ? extra.commentaire : (avant.commentaire || ""),
+      origine: "soiree"
+    });
+  };
+  const garderEcran = async () => {
+    try { if (navigator.wakeLock && !verrou && !document.hidden) { verrou = await navigator.wakeLock.request("screen"); verrou.addEventListener("release", () => { verrou = null; }); } } catch (e) { verrou = null; }
+  };
+  const lacherEcran = () => { try { if (verrou) verrou.release(); } catch (e) { /* ignoré */ } verrou = null; };
+  const surVisibilite = () => {
+    if (etat.phase === "bloc" && chronoLance) {
+      if (document.hidden) etat.quitteA = Date.now(); else { etat.quitteA = null; garderEcran(); }
+    }
+    setTimeout(sauver, 0); // après le chrono, qui compte la sortie
+    if (!document.hidden) tick();
+  };
+  const nettoyer = () => {
+    clearInterval(inter); inter = null;
+    document.removeEventListener("visibilitychange", surVisibilite);
+    window.removeEventListener("pagehide", sauver);
+    chrono.arreter(); lacherEcran();
+    if (nettoyage) { nettoyage(); nettoyage = null; }
+  };
+
+  const majChips = () => {
+    if (!chips) return;
+    vider(chips).append(...etat.plan.blocs.map((b, k) => h("span", { class: k < etat.msBlocs.length ? "fini" : k === etat.iBloc && etat.phase === "bloc" ? "encours" : "" }, `${k + 1}. ${ROLES_BLOC[b.role].court}`)));
+  };
+  function tick() {
+    if (!barre) return;
+    if (etat.phase === "bloc") {
+      const r = reste();
+      barre.lab.textContent = `Bloc ${etat.iBloc + 1}/${etat.plan.nb}`;
+      barre.temps.textContent = r >= 0 ? fmtChrono(r) : "+" + fmtChrono(-r);
+      barre.jauge.style.width = `${clamp(msBloc() / (DUREE_BLOC * 60000) * 100, 0, 100)}%`;
+      if (r <= 0 && chronoLance && !alerte) { alerte = true; bip(2); montrerFinBloc(); }
+    } else if (etat.phase === "pause" && etat.pauseDebut) {
+      const r = DUREE_PAUSE * 60000 - (Date.now() - etat.pauseDebut);
+      barre.lab.textContent = "Pause";
+      barre.temps.textContent = r >= 0 ? fmtChrono(r) : "+" + fmtChrono(-r);
+      barre.jauge.style.width = `${clamp(100 - r / (DUREE_PAUSE * 60000) * 100, 0, 100)}%`;
+      majPause();
+    } else {
+      barre.lab.textContent = etat.phase === "bilan" ? "Bilan" : `Bloc ${Math.min(etat.iBloc + 1, etat.plan.nb)}/${etat.plan.nb}`;
+      barre.temps.textContent = etat.phase === "bilan" ? fmtMin(Math.round(somme(etat.msBlocs) / 60000)) : fmtChrono(DUREE_BLOC * 60000);
+    }
+    if (++tours % 10 === 0) sauver();
+  }
+
+  const arreter = async () => {
+    if (etat.phase === "fini") return true;
+    if (etat.phase === "avant") { nettoyer(); return true; }
+    const min = Math.round((somme(etat.msBlocs) + (etat.phase === "bloc" ? Math.max(0, msBloc()) : 0)) / 60000);
+    const faits = etat.msBlocs.length;
+    const v = await dialogue({
+      titre: "Arrêter la séance ?",
+      texte: `${pluriel(faits, "bloc")} fini${faits > 1 ? "s" : ""} sur ${etat.plan.nb}, ${fmtMin(min)} de travail : c’est enregistré. Tu pourras reprendre la séance ce soir.`,
+      boutons: [{ label: "Arrêter", valeur: "oui", cls: "primaire" }, { label: "Continuer la séance", valeur: "non" }]
+    });
+    if (v !== "oui") return false;
+    jeton++;
+    if (etat.phase === "pause") finirPause(true);
+    if (etat.encours) etat.resultats.push({ type: etat.encours.type, chap: etat.encours.chap, resume: `${TITRES_ACT[etat.encours.type]} (interrompu)`, bloc: etat.iBloc + 1 });
+    etat.encours = null;
+    ecrire();
+    if (etat.phase === "bilan" || (!etat.msBlocs.length && min < 1)) { etat.phase = "fini"; oublierSeance(); } else sauver();
+    nettoyer();
+    return true;
+  };
+
+  const ecranAvant = () => {
+    const nb = etat.plan.nb;
+    const rituel = ["TikTok fermé, notifications coupées (mode Ne pas déranger)", "Cahier, cours et stylo devant moi", "Pendant les pauses, je me lève : pas de TikTok"];
+    vider(f.corps).append(
+      h("div", { class: "sujet" }, h("div", { class: "petit" }, etat.bonus ? "Bloc bonus" : "Ce soir"),
+        h("div", { class: "t" }, `${libelleBlocs(nb)}${nb > 1 ? `, ${pluriel(nb - 1, "pause")} de ${DUREE_PAUSE} min` : ""}`),
+        h("p", { class: "sous" }, `${fmtMin(dureeSeance(nb))} en tout · fin prévue vers ${heureFr(new Date(Date.now() + dureeSeance(nb) * 60000))}`)),
+      h("ol", { class: "plan" }, etat.plan.blocs.map((b, k) => h("li", null,
+        h("span", { class: "ico tnum", style: "font-weight:700" }, String(k + 1)),
+        h("span", { class: "lbl" }, h("b", null, b.titre), h("span", null, `${CHAP[b.chap].court} · ${ROLES_BLOC[b.role].detail}`)),
+        h("span", { class: "min tnum" }, `${DUREE_BLOC} min`)))),
+      h("p", null, h("b", null, "Avant de commencer (30 secondes) :")),
+      h("div", { class: "carte" }, rituel.map((r) => h("label", { class: "case" }, h("input", { type: "checkbox" }), h("span", null, r)))),
+      bandeau("info", `Chaque bloc dure ${DUREE_BLOC} minutes : quand une activité est finie, la suivante démarre. Le chrono se met en pause si tu quittes l’appli, et les pauses trop longues sont notées.`),
+      h("button", { class: "btn grand primaire", type: "button", onclick: () => { preparerSon(); demarrerBloc(false); } }, icone("lecture"), "C’est parti"));
+  };
+  const ecranReprise = () => {
+    const b = blocActuel();
+    const enCours = etat.phase === "bloc";
+    vider(f.corps).append(
+      h("div", { class: "sujet" }, h("div", { class: "petit" }, "Séance en cours"),
+        h("div", { class: "t" }, `Bloc ${etat.iBloc + 1} sur ${etat.plan.nb} · ${b.titre}`),
+        h("p", { class: "sous" }, enCours ? `Il reste ${fmtMin(Math.max(1, Math.ceil(reste() / 60000)))} à ce bloc.` : `${pluriel(etat.msBlocs.length, "bloc")} déjà fait${etat.msBlocs.length > 1 ? "s" : ""}. On attaque le suivant.`)),
+      h("button", { class: "btn grand primaire", type: "button", onclick: () => { preparerSon(); demarrerBloc(enCours); } }, icone("lecture"), enCours ? "Reprendre le bloc" : `Commencer le bloc ${etat.iBloc + 1}`));
+  };
+
+  function demarrerBloc(reprise) {
+    etat.phase = "bloc"; alerte = false;
+    if (!reprise) { etat.iFile = 0; etat.kRempl = 0; etat.msEnCours = 0; etat.encours = null; }
+    if (!chronoLance) { chrono.demarrer(); chronoLance = true; } else { chrono.manuel = false; chrono.reprendre(); }
+    debutBlocMs = chrono.ms() - (reprise ? etat.msEnCours || 0 : 0);
+    if (reprise && etat.quitteA) {
+      const absent = Date.now() - etat.quitteA; etat.quitteA = null;
+      if (absent >= 45000) demanderRetour(chrono, absent);
+    }
+    garderEcran(); majChips(); sauver(); tick();
+    if (reprise && etat.encours) return lancerActivite(etat.encours);
+    activiteSuivante();
+  }
+  function prochaineActivite() {
+    const b = blocActuel();
+    while (etat.iFile < b.file.length) { const d = activiteDeBloc(b.file[etat.iFile++], etat); if (d) return d; }
+    // la file est vide : révisions en boucle (quiz et explique-le) jusqu’à la fin du bloc
+    const seq = (b.revisions || []).flatMap((c) => [["quiz", c], ["explique", c]]);
+    for (let essai = 0; essai < seq.length + 2; essai++) {
+      const d = seq.length ? activiteDeBloc(seq[etat.kRempl++ % seq.length], etat) : null;
+      if (d && !(etat.derniere && etat.derniere.type === d.type && etat.derniere.chap === (d.chap || null))) return d;
+    }
+    return { type: "quiz", chap: b.chap, direct: true, titre: `Quiz à pièges · ${CHAP[b.chap].court}` };
+  }
+  function activiteSuivante(res) {
+    if (res) etat.resultats.push(Object.assign({ bloc: etat.iBloc + 1 }, res));
+    if (nettoyage) { nettoyage(); nettoyage = null; }
+    etat.encours = null;
+    if (reste() <= 0) return finBloc();
+    lancerActivite(prochaineActivite());
+  }
+  function lancerActivite(d) {
+    const mon = ++jeton;
+    etat.encours = d; etat.derniere = { type: d.type, chap: d.chap || null };
+    if (d.dues) etat.duesFait = true;
+    sauver();
+    const b = blocActuel();
+    const zone = vider(f.corps);
+    f.corps.scrollTop = 0;
+    zone.append(h("div", { class: "rangee bloc-tete", style: "justify-content:space-between" },
+      h("div", null, h("div", { class: "petit" }, `Bloc ${etat.iBloc + 1} sur ${etat.plan.nb} · ${b.titre}`), h("b", null, d.titre)),
+      h("button", { class: "btn fantome petit-btn", type: "button", onclick: () => { if (mon === jeton) activiteSuivante({ type: d.type, chap: d.chap, resume: "Activité passée" }); } }, "Passer")));
+    const sousZone = h("div", { class: "pile", style: "gap:14px" });
+    zone.append(sousZone);
+    if (alerte) montrerFinBloc();
+    const ctx = { chrono, libelleSuite: "Continuer", fini: (r) => { if (mon === jeton) activiteSuivante(Object.assign({ type: d.type, chap: d.chap }, r)); } };
+    Object.defineProperty(ctx, "surNettoyage", { set: (fn) => { nettoyage = fn; }, get: () => nettoyage });
+    ACTIVITES[d.type](sousZone, { mode: d.mode, chap: d.chap, exo: d.exo, direct: d.direct }, ctx);
+  }
+  function montrerFinBloc() {
+    if (!f || f.corps.querySelector(".fin-bloc")) return;
+    const dernier = etat.iBloc + 1 >= etat.plan.nb;
+    const el = bandeau("alerte",
+      h("b", null, `${DUREE_BLOC} minutes : bloc terminé.`), " ", dernier ? "Termine ce que tu fais, puis le bilan." : "Termine ce que tu fais, puis pause.",
+      h("div", { style: "margin-top:8px" }, h("button", { class: "btn petit-btn primaire", type: "button", onclick: async () => {
+        const d = etat.encours;
+        if (d && (d.type === "exercice" || d.type === "explique")) {
+          const v = await dialogue({ titre: dernier ? "Passer au bilan maintenant ?" : "Pause maintenant ?", texte: "Ce que tu as écrit dans cette activité ne sera pas gardé. Finis-la plutôt si tu es presque au bout.",
+            boutons: [{ label: dernier ? "Bilan maintenant" : "Pause maintenant", valeur: "oui", cls: "primaire" }, { label: "Je finis d’abord", valeur: "non" }] });
+          if (v !== "oui") return;
+        }
+        jeton++;
+        if (d) etat.resultats.push({ type: d.type, chap: d.chap, resume: `${TITRES_ACT[d.type]} (arrêté à la fin du bloc)`, bloc: etat.iBloc + 1 });
+        if (nettoyage) { nettoyage(); nettoyage = null; }
+        etat.encours = null;
+        finBloc();
+      } }, dernier ? "Bilan maintenant" : "Pause maintenant")));
+    el.classList.add("fin-bloc");
+    el.setAttribute("role", "status");
+    f.corps.prepend(el);
+  }
+  function finBloc() {
+    jeton++;
+    etat.msBlocs.push(Math.max(0, msBloc()));
+    etat.encours = null; alerte = false;
+    chrono.pauser(); chrono.manuel = true; lacherEcran();
+    if (etat.iBloc + 1 >= etat.plan.nb) {
+      etat.phase = "bilan"; ecrire(); sauver(); majChips(); tick();
+      return bilan();
+    }
+    etat.phase = "pause"; etat.pauseDebut = Date.now();
+    ecrire(); sauver(); majChips();
+    ecranPause(); tick();
+  }
+  function ecranPause() {
+    const suivant = etat.plan.blocs[etat.iBloc + 1];
+    const temps = h("div", { class: "pause-temps tnum" }, fmtChrono(DUREE_PAUSE * 60000));
+    const msg = h("p", { class: "pause-msg" }, "Lève-toi, bois de l’eau, regarde par la fenêtre. Pas de TikTok : 5 minutes de vidéos deviennent vite 30.");
+    const bouton = h("button", { class: "btn grand", type: "button", onclick: () => finirPause(false) }, "Reprendre maintenant");
+    vider(f.corps).append(h("div", { class: "pause-zone" },
+      h("div", { class: "petit" }, `Pause ${etat.iBloc + 1} sur ${etat.plan.nb - 1} · bloc ${etat.iBloc + 1} terminé`),
+      temps, msg,
+      h("p", { class: "sous" }, `Ensuite : bloc ${etat.iBloc + 2} · ${suivant.titre} (${CHAP[suivant.chap].court})`),
+      bouton));
+    pauseEls = { temps, msg, bouton, sonne: false };
+    majPause();
+  }
+  function majPause() {
+    if (!pauseEls || !etat.pauseDebut) return;
+    const r = DUREE_PAUSE * 60000 - (Date.now() - etat.pauseDebut);
+    if (r > 0) { pauseEls.temps.textContent = fmtChrono(r); return; }
+    pauseEls.temps.textContent = "+" + fmtChrono(-r);
+    pauseEls.temps.classList.add("depasse");
+    if (!pauseEls.sonne) {
+      pauseEls.sonne = true; bip(3);
+      pauseEls.bouton.className = "btn grand primaire";
+      vider(pauseEls.bouton).append(icone("lecture"), `Reprendre : bloc ${etat.iBloc + 2}`);
+    }
+    pauseEls.msg.textContent = -r > 60000 ? `Pause dépassée de ${fmtMin(Math.round(-r / 60000))} : c’est noté dans ton journal.` : "C’est l’heure : on y retourne.";
+  }
+  function finirPause(arret) {
+    if (etat.phase !== "pause") return;
+    const duree = Date.now() - (etat.pauseDebut || Date.now());
+    const depasse = duree > (DUREE_PAUSE + 1) * 60000 ? Math.round((duree - DUREE_PAUSE * 60000) / 60000) : 0; // 1 min de marge
+    etat.pauses.push({ apres: etat.iBloc + 1, minutes: Math.round(duree / 60000), depasse });
+    etat.pauseDebut = null; pauseEls = null;
+    etat.iBloc++; etat.phase = "entre";
+    ecrire(); sauver();
+    if (!arret) demarrerBloc(false);
+  }
+  function bilan() {
+    majChips();
+    let concentration = null, tiktok = (S.jours.get(todayKey()) || {}).tiktok ?? null, commentaire = "";
+    vider(f.corps).append(
+      h("h3", { class: "h2" }, etat.bonus ? "Bloc bonus terminé" : "Bilan de la soirée"),
+      h("label", { class: "champ" }, "Ta concentration ce soir"),
+      choixUnique([[1, "Très dispersé"], [2, "Dispersé"], [3, "Moyen"], [4, "Concentré"], [5, "À fond"]], null, (v) => { concentration = Number(v); }),
+      h("label", { class: "champ" }, "Ton temps TikTok aujourd’hui", h("span", { class: "aide" }, "Regarde « Temps d’écran » (iPhone) ou « Bien-être numérique » (Android).")),
+      choixUnique(TIKTOK, tiktok, (v) => { tiktok = v; }),
+      h("label", { class: "champ" }, "Ce que tu retiens, ou ce qui a bloqué (facultatif)",
+        h("textarea", { id: "bilan-txt", style: "min-height:90px", oninput: (ev) => { commentaire = ev.target.value; } })),
+      h("button", { class: "btn grand primaire", type: "button", onclick: () => {
+        ecrire({ concentration, commentaire });
+        if (tiktok != null) Store.ecrire("jours", todayKey(), Object.assign({}, S.jours.get(todayKey()) || {}, { tiktok: String(tiktok) }));
+        etat.phase = "fini"; oublierSeance(); nettoyer();
+        finale();
+      } }, "Enregistrer ma soirée"));
+  }
+  function finale() {
+    const auj = minutesDuJour(etat.date), prevus = nbBlocsDuJour(etat.date), faits = blocsFaitsDuJour(etat.date);
+    const ok = faits >= prevus || auj >= objectifDuJour(etat.date);
+    const dep = somme(etat.pauses.map((x) => x.depasse || 0));
+    const minutes = Math.round(somme(etat.msBlocs) / 60000);
+    vider(f.corps).append(
+      h("div", { class: "tampon-zone" },
+        h("div", { class: "tampon" + (ok ? "" : " bleu") }, ok ? "Validé" : `${faits}/${prevus}`),
+        h("p", null, etat.bonus ? `Bloc bonus : ${fmtMin(minutes)} de plus, ${fmtMin(auj)} ce soir.` : `${pluriel(faits, "bloc")} sur ${prevus} · ${fmtMin(auj)} de travail ce soir.`),
+        etat.pauses.length ? h("p", { class: "sous" }, dep ? `Pauses dépassées de ${fmtMin(dep)} au total. Demain, tiens-les.` : "Toutes les pauses tenues.") : null,
+        chrono.decroches ? h("p", { class: "sous" }, `${pluriel(chrono.decroches, "décrochage")} pendant la séance. Fais mieux demain.`) : null),
+      h("button", { class: "btn grand primaire", type: "button", onclick: () => f.fermer(true) }, "Fermer"));
+  }
 
   ouvrirFeuille({
-    titre: "Séance du soir",
-    avantFermeture: async () => {
-      if (termine) return true;
-      if (iEtape < 0) { chrono.arreter(); clearInterval(inter); return true; }
-      const min = chrono.minutes();
-      const v = await dialogue({ titre: "Arrêter la séance ?", texte: min >= 1 ? `Tu as travaillé ${fmtMin(min)}. Ce temps sera enregistré.` : "Moins d’une minute : rien ne sera enregistré.",
-        boutons: [{ label: "Arrêter", valeur: "oui", cls: "primaire" }, { label: "Continuer la séance", valeur: "non" }] });
-      if (v !== "oui") return false;
-      termine = true; chrono.arreter(); clearInterval(inter); if (nettoyage) nettoyage();
-      enregistrerSeance({ etapes: resultats, minutes: min, chrono, origine: "soiree" });
-      return true;
-    },
-    construire: (f) => {
-      const barre = h("div", { class: "chrono-barre" }, h("span", { class: "temps" }, "00:00"), h("div", { class: "barre" }, h("i", { style: "width:0%" })), h("span", { class: "petit tnum" }, "/ " + fmtMin(plan.total)));
-      const etapesEl = h("div", { class: "etapes", style: "padding:8px 20px 0" });
-      f.feuille.insertBefore(barre, f.corps);
-      f.feuille.insertBefore(etapesEl, f.corps);
-      const majEtapes = () => {
-        vider(etapesEl).append(...plan.etapes.map((e, k) => h("span", { class: k === iEtape ? "encours" : k < iEtape ? "fini" : "" }, `${k + 1}. ${TITRES_ACT[e.type]}`)));
-      };
-      const tick = () => {
-        const ms = chrono.ms();
-        barre.querySelector(".temps").textContent = fmtChrono(ms);
-        barre.querySelector("i").style.width = `${clamp(ms / objectifMs * 100, 0, 100)}%`;
-      };
-      majEtapes();
-
-      /* Avant de commencer */
-      const rituel = [
-        ["TikTok fermé, notifications coupées (mode Ne pas déranger)", false],
-        ["Cahier, cours et stylo devant moi", false],
-        ["Je sais combien de temps je travaille : " + fmtMin(plan.total), false]
-      ];
-      vider(f.corps).append(
-        h("div", { class: "sujet" }, h("div", { class: "petit" }, "Ce soir"), h("div", { class: "t" }, plan.chap ? `${MATIERES[plan.chap.mat].long} · ${plan.chap.court}` : "Révisions"), h("p", { class: "sous" }, `${plan.etapes.length} étapes · ${fmtMin(plan.total)}`)),
-        h("p", null, h("b", null, "Avant de commencer (30 secondes) :")),
-        h("div", { class: "carte" }, rituel.map((r) => h("label", { class: "case" }, h("input", { type: "checkbox", onchange: (e) => { r[1] = e.target.checked; } }), h("span", null, r[0])))),
-        bandeau("info", "Le chrono se met en pause si tu quittes l’appli. À ton retour, elle te demandera si c’était pour réviser."),
-        h("button", { class: "btn grand primaire", type: "button", onclick: () => { chrono.demarrer(); inter = setInterval(tick, 1000); etapeSuivante(); } }, icone("lecture"), "C’est parti"));
-
-      function etapeSuivante(res) {
-        if (res) resultats.push(res);
-        if (nettoyage) { nettoyage(); nettoyage = null; }
-        iEtape++;
-        majEtapes();
-        f.corps.scrollTop = 0;
-        const e = plan.etapes[iEtape];
-        if (!e) return bilan();
-        if (e.type === "bilan") return bilan();
-        const zone = vider(f.corps);
-        zone.append(h("div", { class: "rangee", style: "justify-content:space-between" },
-          h("div", null, h("div", { class: "petit" }, `Étape ${iEtape + 1} · environ ${fmtMin(e.minutes)}`), h("b", null, e.titre)),
-          h("button", { class: "btn fantome petit-btn", type: "button", onclick: () => etapeSuivante({ type: e.type, chap: e.chap, resume: "Étape passée" }) }, "Passer")));
-        if (POURQUOI[e.type]) zone.append(h("p", { class: "petit" }, POURQUOI[e.type]));
-        const sousZone = h("div", { class: "pile", style: "gap:14px" });
-        zone.append(sousZone);
-        const ctx = { chrono, libelleSuite: iEtape + 1 < plan.etapes.length ? "Étape suivante" : "Terminer", fini: (r) => etapeSuivante(Object.assign({ type: e.type, chap: e.chap }, r)) };
-        Object.defineProperty(ctx, "surNettoyage", { set: (fn) => { nettoyage = fn; }, get: () => nettoyage });
-        ACTIVITES[e.type](sousZone, { mode: e.mode, chap: e.chap, exo: e.exo }, ctx);
-      }
-
-      function bilan() {
-        majEtapes();
-        let concentration = null, tiktok = (S.jours.get(todayKey()) || {}).tiktok ?? null, commentaire = "";
-        const zone = vider(f.corps);
-        zone.append(
-          h("h3", { class: "h2" }, "Bilan de la soirée"),
-          h("label", { class: "champ" }, "Ta concentration ce soir"),
-          choixUnique([[1, "Très dispersé"], [2, "Dispersé"], [3, "Moyen"], [4, "Concentré"], [5, "À fond"]], null, (v) => { concentration = Number(v); }),
-          h("label", { class: "champ" }, "Ton temps TikTok aujourd’hui", h("span", { class: "aide" }, "Regarde « Temps d’écran » (iPhone) ou « Bien-être numérique » (Android).")),
-          choixUnique(TIKTOK, tiktok, (v) => { tiktok = v; }),
-          h("label", { class: "champ" }, "Ce que tu retiens, ou ce qui a bloqué (facultatif)",
-            h("textarea", { id: "bilan-txt", style: "min-height:90px", oninput: (ev) => { commentaire = ev.target.value; } })),
-          h("button", { class: "btn grand primaire", type: "button", onclick: () => {
-            termine = true; chrono.arreter(); clearInterval(inter);
-            const minutes = chrono.minutes();
-            enregistrerSeance({ etapes: resultats, minutes, chrono, concentration, commentaire, origine: "soiree" });
-            if (tiktok != null) Store.ecrire("jours", todayKey(), Object.assign({}, S.jours.get(todayKey()) || {}, { tiktok: String(tiktok) }));
-            delete S.chapSoirSecours;
-            try { localStorage.removeItem("carnet.chapSoir"); } catch (er) { /* ignoré */ }
-            const auj = minutesDuJour(todayKey());
-            const ok = auj >= S.config.objectif;
-            vider(f.corps).append(
-              h("div", { class: "tampon-zone" },
-                h("div", { class: "tampon" + (ok ? "" : " bleu") }, ok ? "Validé" : fmtMin(minutes)),
-                h("p", null, ok ? `Objectif atteint : ${fmtMin(auj)} ce soir.` : `${fmtMin(auj)} ce soir sur ${fmtMin(S.config.objectif)}.`),
-                chrono.decroches ? h("p", { class: "sous" }, `${pluriel(chrono.decroches, "décrochage")} pendant la séance. Note-le, et fais mieux demain.`) : h("p", { class: "sous" }, chrono.sorties ? `${pluriel(chrono.sorties, "sortie")} de l’appli, toutes pour travailler.` : "Aucune sortie de l’appli pendant la séance.")),
-              h("button", { class: "btn grand primaire", type: "button", onclick: () => f.fermer(true) }, "Fermer"));
-          } }, "Enregistrer ma soirée"));
-      }
+    titre: etat.bonus ? "Bloc bonus" : "Séance du soir",
+    avantFermeture: arreter,
+    construire: (feuille) => {
+      f = feuille;
+      barre = { lab: h("span", { class: "temps" }, `Bloc ${etat.iBloc + 1}/${etat.plan.nb}`), jauge: h("i", { style: "width:0%" }), temps: h("span", { class: "tnum", style: "font-weight:700" }, fmtChrono(DUREE_BLOC * 60000)) };
+      const el = h("div", { class: "chrono-barre" }, barre.lab, h("div", { class: "barre" }, barre.jauge), barre.temps);
+      chips = h("div", { class: "etapes", style: "padding:8px 20px 0" });
+      f.feuille.insertBefore(el, f.corps);
+      f.feuille.insertBefore(chips, f.corps);
+      majChips();
+      document.addEventListener("visibilitychange", surVisibilite);
+      window.addEventListener("pagehide", sauver);
+      if (etat.phase === "avant") ecranAvant();
+      else if (etat.phase === "pause") ecranPause();
+      else if (etat.phase === "bilan") bilan();
+      else ecranReprise();
+      inter = setInterval(tick, 500);
+      tick();
     }
   });
 }
@@ -2772,7 +3084,7 @@ function aideInstallation(compacte) {
 /* ---------- CE SOIR ---------- */
 function vueCeSoir() {
   const auj = todayKey();
-  const obj = S.config.objectif;
+  const obj = objectifDuJour(auj);
   const fait = minutesDuJour(auj);
   const ser = series();
   const jPhilo = daysBetween(auj, DATE_PHILO);
@@ -2800,11 +3112,11 @@ function vueCeSoir() {
   const lundi = lundiDe(auj); const mpj = minutesParJour();
   out.push(h("section", { class: "carte" },
     h("div", { class: "serie" },
-      h("span", null, h("b", { class: "tnum" }, String(ser.actuelle)), ` soir${ser.actuelle > 1 ? "s" : ""} d’affilée à ${obj} min`),
+      h("span", null, h("b", { class: "tnum" }, String(ser.actuelle)), ` soir${ser.actuelle > 1 ? "s" : ""} d’affilée à l’objectif`),
       h("span", null, "Record : ", h("b", { class: "tnum" }, String(ser.record)))),
     h("div", { class: "semaine", role: "list", "aria-label": "Cette semaine" }, [0, 1, 2, 3, 4, 5, 6].map((k) => {
       const d = addDays(lundi, k); const m = mpj.get(d) || 0;
-      const cls = m >= obj ? "plein" : m > 0 ? "part" : "";
+      const cls = m >= objectifDuJour(d) ? "plein" : m > 0 ? "part" : "";
       return h("div", { class: "j" + (d === auj ? " auj" : ""), role: "listitem", "aria-label": `${fmtDate(d)} : ${fmtMin(m)}` }, h("span", { class: "rond " + cls }), "LMMJVSD"[k]);
     })),
     pro ? h("p", { class: "petit" }, icone("calendrier"), " Prochaine échéance : ", h("b", null, pro.titre), ` — ${fmtDateCourte(pro.date)} (dans ${pluriel(Math.max(0, daysBetween(auj, pro.date)), "jour")})`) : null));
@@ -2814,16 +3126,8 @@ function vueCeSoir() {
     out.push(h("section", { class: "carte mot" }, h("div", { class: "petit" }, "Le mot de ton frère", S.config.mot.date ? ` · ${fmtDateCourte(S.config.mot.date)}` : ""), h("p", { class: "mot-txt" }, S.config.mot.texte)));
   }
 
-  /* Plan */
-  const plan = planDuSoir();
-  const atteint = fait >= obj;
-  const planCarte = h("section", { class: "carte", "aria-labelledby": "titre-plan" },
-    h("div", { class: "carte-titre" }, h("h2", { id: "titre-plan" }, atteint ? "Objectif atteint ce soir" : fait > 0 ? `Il te reste ${fmtMin(obj - fait)}` : `Ta séance de ce soir · ${fmtMin(plan.total)}`),
-      plan.chap ? h("button", { class: "btn fantome petit-btn", type: "button", onclick: changerChapitreDuSoir }, "Autre chapitre") : null),
-    atteint ? h("p", { class: "sous" }, `${fmtMin(fait)} de travail aujourd’hui. Si tu veux un bonus, voici la suite logique :`) : null,
-    h("ol", { class: "plan" }, plan.etapes.map((e) => h("li", null, h("span", { class: "ico" }, icone(ICONES_ACT[e.type])), h("span", { class: "lbl" }, h("b", null, e.titre), h("span", null, e.detail)), h("span", { class: "min tnum" }, fmtMin(e.minutes))))),
-    h("button", { class: "btn grand primaire", type: "button", onclick: lancerSoiree }, icone("lecture"), atteint ? "Faire un bonus" : fait > 0 ? "Continuer ma soirée" : "Commencer la séance"));
-  out.push(planCarte);
+  /* Séance du soir */
+  out.push(carteSeance(fait));
   const aide = aideInstallation(true);
   if (aide) out.push(aide);
 
@@ -2843,6 +3147,45 @@ function vueCeSoir() {
     h("p", { class: "sous" }, "Regarde le chiffre réel dans « Temps d’écran » (iPhone) ou « Bien-être numérique » (Android). Pas d’estimation à la louche."),
     choixUnique(TIKTOK, jour.tiktok, (v) => Store.ecrire("jours", auj, Object.assign({}, S.jours.get(auj) || {}, { tiktok: String(v) })))));
   return out;
+}
+
+function carteSeance(fait) {
+  const auj = todayKey();
+  const nb = nbBlocsDuJour(auj), faits = blocsFaitsDuJour(auj), sem = semaineMontee(auj);
+  const rythme = sem ? `Semaine ${sem} sur 3 de la montée : ${libelleBlocs(nb)} chaque soir${sem < 3 ? `, puis ${nb + 1} la semaine prochaine` : ""}.` : `${libelleBlocs(nb)} chaque soir, ${DUREE_PAUSE} min de pause entre deux.`;
+  const enCours = lireSeanceEnCours();
+  if (enCours) {
+    const ou = enCours.phase === "pause" ? "en pause" : enCours.phase === "bilan" ? "il reste le bilan" : `bloc ${Math.min(enCours.iBloc + 1, enCours.plan.nb)} sur ${enCours.plan.nb}`;
+    const b = enCours.plan.blocs[Math.min(enCours.iBloc, enCours.plan.blocs.length - 1)];
+    return h("section", { class: "carte", "aria-labelledby": "titre-plan" },
+      h("div", { class: "carte-titre" }, h("h2", { id: "titre-plan" }, `Séance en cours · ${ou}`)),
+      h("p", { class: "sous" }, enCours.phase === "bilan" ? "Tous les blocs sont faits : remplis le bilan pour finir." : `${enCours.msBlocs.length} bloc${enCours.msBlocs.length > 1 ? "s" : ""} fait${enCours.msBlocs.length > 1 ? "s" : ""}. Prochain : ${b.titre} (${CHAP[b.chap].court}).`),
+      h("button", { class: "btn grand primaire", type: "button", onclick: () => lancerSoiree({ reprise: lireSeanceEnCours() || enCours }) }, icone("lecture"), "Reprendre la séance"));
+  }
+  if (faits >= nb) {
+    return h("section", { class: "carte", "aria-labelledby": "titre-plan" },
+      h("div", { class: "carte-titre" }, h("h2", { id: "titre-plan" }, "Séance faite ce soir")),
+      h("p", { class: "sous" }, `${pluriel(faits, "bloc")} sur ${nb} · ${fmtMin(fait)} de travail. ${rythme}`),
+      h("button", { class: "btn grand", type: "button", onclick: () => lancerSoiree({ bonus: true }) }, icone("lecture"), `Un bloc bonus de ${DUREE_BLOC} min`));
+  }
+  const plan = planSeance(nb);
+  const reste = plan.blocs.slice(Math.min(faits, plan.blocs.length - 1));
+  const lignes = [];
+  reste.forEach((b, k) => {
+    if (k) lignes.push(h("li", { class: "pause" }, h("span", { class: "ico" }, icone("pause")), h("span", { class: "lbl" }, "Pause : lève-toi, pas de TikTok"), h("span", { class: "min tnum" }, `${DUREE_PAUSE} min`)));
+    const ico = b.mat === "philo" ? "bulle" : b.role === "bac" ? "stylo" : b.role === "apprendre" || b.role === "hggsp2" ? "cartes" : "quiz";
+    lignes.push(h("li", null, h("span", { class: "ico" }, icone(ico)),
+      h("span", { class: "lbl" }, h("b", null, `${faits + k + 1}. ${b.titre}`), h("span", null, `${CHAP[b.chap].court} · ${ROLES_BLOC[b.role].detail}`)),
+      h("span", { class: "min tnum" }, `${DUREE_BLOC} min`)));
+  });
+  return h("section", { class: "carte", "aria-labelledby": "titre-plan" },
+    h("div", { class: "carte-titre" }, h("h2", { id: "titre-plan" }, faits ? `Il te reste ${pluriel(reste.length, "bloc")}` : `Ta séance de ce soir · ${fmtMin(dureeSeance(reste.length))}`)),
+    h("p", { class: "sous" }, rythme),
+    h("ol", { class: "plan" }, lignes),
+    h("div", { class: "rangee", style: "flex-wrap:wrap" },
+      plan.chapH ? h("button", { class: "btn fantome petit-btn", type: "button", onclick: () => changerChapitreMat("hggsp") }, "Autre chapitre d’HGGSP") : null,
+      plan.chapP ? h("button", { class: "btn fantome petit-btn", type: "button", onclick: () => changerChapitreMat("philo") }, "Autre notion de philo") : null),
+    h("button", { class: "btn grand primaire", type: "button", onclick: () => lancerSoiree() }, icone("lecture"), faits ? "Continuer ma séance" : "Commencer la séance"));
 }
 
 /* ---------- RÉVISER ---------- */
@@ -3040,16 +3383,18 @@ function formMot() {
    PROGRÈS (vue de suivi, aussi pour le frère sur PC) + graphiques
    ============================================================ */
 function vueProgres() {
-  const auj = todayKey(); const obj = S.config.objectif;
+  const auj = todayKey(); const obj = objectifDuJour(auj);
   const lundi = lundiDe(auj); const mpj = minutesParJour();
-  let semaine = 0, joursOk = 0;
-  for (let k = 0; k < 7; k++) { const m = mpj.get(addDays(lundi, k)) || 0; semaine += m; if (m >= obj) joursOk++; }
+  let semaine = 0, joursOk = 0, vise = 0;
+  for (let k = 0; k < 7; k++) { const d = addDays(lundi, k), m = mpj.get(d) || 0; semaine += m; vise += objectifDuJour(d); if (m >= objectifDuJour(d)) joursOk++; }
   const ser = series();
   const moy = moyenneGenerale(); const prev = Number(S.config.moyennePrecedente);
   const tk = []; for (let k = 0; k < 7; k++) { const j = S.jours.get(addDays(auj, -k)); if (j && j.tiktok != null) tk.push(TIKTOK_MILIEU[j.tiktok]); }
   const tkMoy = tk.length ? tk.reduce((a, b) => a + b, 0) / tk.length : null;
   const ses7 = [...S.sessions.values()].filter((s) => s.date >= addDays(auj, -6));
   const sorties = ses7.reduce((a, s) => a + (s.sorties || 0), 0), decroches = ses7.reduce((a, s) => a + (s.decroches || 0), 0);
+  const pauses7 = ses7.flatMap((s) => s.pauses || []), depasse7 = pauses7.filter((x) => x.depasse > 0);
+  const blocs7 = ses7.reduce((a, s) => a + ((s.blocs && s.blocs.faits) || 0), 0);
   const conc = ses7.filter((s) => s.concentration).map((s) => s.concentration);
   const concMoy = conc.length ? conc.reduce((a, b) => a + b, 0) / conc.length : null;
 
@@ -3061,7 +3406,7 @@ function vueProgres() {
   let clsMoy = "";
   if (moy != null && prev) { const ecart = moy - prev; dMoy = `${ecart >= 0 ? "+" : "−"}${fmtNote(Math.abs(ecart))} par rapport à l’an dernier (${fmtNote(prev)})`; clsMoy = ecart >= 0 ? "haut" : "bas"; }
   out.push(h("section", { class: "tuiles", "aria-label": "Résumé" },
-    tuile("Cette semaine", fmtMin(semaine), `${pluriel(joursOk, "soir")} à l’objectif · visé : ${fmtMin(obj * 7)}`),
+    tuile("Cette semaine", fmtMin(semaine), `${pluriel(joursOk, "soir")} à l’objectif · visé : ${fmtMin(vise)}`),
     tuile("Série en cours", pluriel(ser.actuelle, "soir"), `Record : ${pluriel(ser.record, "soir")}`),
     tuile("Moyenne générale", moy != null ? fmtNote(moy) : "—", dMoy, clsMoy),
     tuile("TikTok par jour (7 j)", tkMoy != null ? `≈ ${fmtMin(tkMoy)}` : "—", tk.length ? `${pluriel(tk.length, "jour")} renseigné${tk.length > 1 ? "s" : ""}` : "Pas encore renseigné")));
@@ -3077,12 +3422,13 @@ function vueProgres() {
       h("button", { class: "btn fantome petit-btn", type: "button", onclick: () => { UI.vueTableau = !UI.vueTableau; planifierRendu(); } }, UI.vueTableau ? "Voir le graphique" : "Voir les chiffres")),
     UI.vueTableau ? tableMin : h("div", { class: "graphe", id: "g-minutes", role: "img", "aria-label": "Minutes de travail par jour et temps TikTok déclaré sur 28 jours" }),
     UI.vueTableau ? null : h("div", { class: "legende" },
-      h("span", null, h("span", { class: "k", style: "background:var(--barre)" }), `Objectif atteint (${obj} min)`),
+      h("span", null, h("span", { class: "k", style: "background:var(--barre)" }), `Objectif atteint (${obj} min ce soir)`),
       h("span", null, h("span", { class: "k", style: "background:var(--barre-part)" }), "En dessous"),
       h("span", null, "TikTok déclaré :"),
       ...TIKTOK.slice(1).map(([v, lab], k) => h("span", null, h("span", { class: "k", style: `background:var(--tk${k + 1})` }), lab)),
       h("span", null, h("span", { class: "k", style: "background:transparent;border:1px solid var(--axe)" }), "0")),
-    h("p", { class: "petit" }, `7 derniers jours : ${pluriel(sorties, "sortie")} de l’appli pendant les séances, dont ${pluriel(decroches, "décrochage")}${concMoy ? ` · concentration moyenne ${fmtNote(concMoy)}/5` : ""}.`)));
+    h("p", { class: "petit" }, `7 derniers jours : ${pluriel(blocs7, "bloc")} de ${DUREE_BLOC} min · ${pluriel(sorties, "sortie")} de l’appli pendant les séances, dont ${pluriel(decroches, "décrochage")}${concMoy ? ` · concentration moyenne ${fmtNote(concMoy)}/5` : ""}.`),
+    pauses7.length ? h("p", { class: "petit" }, depasse7.length ? `Pauses : ${depasse7.length} dépassée${depasse7.length > 1 ? "s" : ""} sur ${pauses7.length}, ${fmtMin(depasse7.reduce((a, x) => a + x.depasse, 0))} perdues en tout.` : `Pauses : ${pauses7.length} sur ${pauses7.length} tenues en 5 min.`) : null));
 
   /* Notes */
   const notes = notesTriees().slice().reverse();
@@ -3130,7 +3476,7 @@ function vueProgres() {
     ses.length ? h("ul", { class: "journal" }, ses.map((s) => h("li", null,
       h("span", { class: "jd" }, fmtDate(s.date)),
       h("span", null, h("span", { class: "jt" }, (s.etapes || []).map((e) => e.resume || TITRES_ACT[e.type]).filter(Boolean).join(" · ") || "Séance"),
-        h("span", { class: "petit", style: "display:block" }, [s.concentration ? `Concentration ${s.concentration}/5` : null, s.sorties ? `${pluriel(s.sorties, "sortie")}` : "aucune sortie", s.decroches ? `${pluriel(s.decroches, "décrochage")}` : null].filter(Boolean).join(" · ")),
+        h("span", { class: "petit", style: "display:block" }, [s.blocs ? `${s.blocs.bonus ? "bonus · " : ""}${s.blocs.faits}/${s.blocs.prevus} bloc${s.blocs.prevus > 1 ? "s" : ""}` : null, s.pauses && s.pauses.length ? (s.pauseDepassee ? `pauses dépassées de ${fmtMin(s.pauseDepassee)}` : "pauses tenues") : null, s.concentration ? `Concentration ${s.concentration}/5` : null, s.sorties ? `${pluriel(s.sorties, "sortie")}` : "aucune sortie", s.decroches ? `${pluriel(s.decroches, "décrochage")}` : null].filter(Boolean).join(" · ")),
         s.commentaire ? h("span", { class: "jc", style: "display:block" }, `« ${s.commentaire} »`) : null),
       h("span", { class: "jm" }, fmtMin(s.minutes))))) : h("div", { class: "vide" }, icone("chrono"), h("p", null, "Aucune séance enregistrée. La première apparaîtra ici dès ce soir."))));
   return out;
@@ -3174,13 +3520,14 @@ function barreArrondie(x, top, w, base) {
 }
 function grapheMinutes(el) {
   vider(el);
-  const auj = todayKey(); const obj = S.config.objectif; const mpj = minutesParJour();
+  const auj = todayKey(); const obj = objectifDuJour(auj); const mpj = minutesParJour();
   const jours = []; for (let k = 27; k >= 0; k--) jours.push(addDays(auj, -k));
   const vals = jours.map((d) => mpj.get(d) || 0);
+  const objs = jours.map((d) => objectifDuJour(d));
   const W = Math.max(300, el.clientWidth || 600), H = 230;
   const m = { l: 36, r: 10, t: 26, b: 62 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
-  const maxV = Math.max(obj * 1.35, ...vals);
+  const maxV = Math.max(...objs.map((o) => o * 1.35), ...vals);
   const pas = maxV > 150 ? 60 : maxV > 75 ? 30 : 15;
   const yMax = Math.ceil(maxV / pas) * pas;
   const y = (v) => m.t + ih - (v / yMax) * ih;
@@ -3194,7 +3541,7 @@ function grapheMinutes(el) {
   svg.append(sv("text", { x: m.l - 6, y: m.t - 14, "text-anchor": "end" }, "min"));
   jours.forEach((d, i) => {
     const v = vals[i]; const x = m.l + i * bande + (bande - bw) / 2;
-    if (v > 0) svg.append(sv("path", { d: barreArrondie(x, y(v), bw, base), fill: v >= obj ? "var(--barre)" : "var(--barre-part)" }));
+    if (v > 0) svg.append(sv("path", { d: barreArrondie(x, y(v), bw, base), fill: v >= objs[i] ? "var(--barre)" : "var(--barre-part)" }));
     const j = S.jours.get(d);
     const yS = base + 26;
     if (j && j.tiktok != null) {
@@ -3206,14 +3553,15 @@ function grapheMinutes(el) {
   });
   svg.append(sv("text", { x: m.l - 6, y: base + 35, "text-anchor": "end" }, "TikTok"));
   const yo = y(obj);
-  svg.append(sv("line", { x1: m.l, x2: W - m.r, y1: yo, y2: yo, stroke: "var(--encre-3)", "stroke-width": 1 }));
+  // l’objectif monte avec les blocs : la ligne suit chaque jour
+  svg.append(sv("path", { d: jours.map((d, i) => `${i ? "L" : "M"}${m.l + i * bande},${y(objs[i])} H${m.l + (i + 1) * bande}`).join(" "), fill: "none", stroke: "var(--encre-3)", "stroke-width": 1 }));
   svg.append(sv("text", { x: W - m.r, y: yo - 5, "text-anchor": "end", class: "lab-fort" }, `objectif ${obj} min`));
   const b = bulle(el);
   jours.forEach((d, i) => {
     const zone = sv("rect", { x: m.l + i * bande, y: m.t, width: bande, height: ih + 44, fill: "transparent", style: "cursor:pointer" });
     const montrer = () => {
       const j = S.jours.get(d) || {};
-      b.montrer(m.l + i * bande + bande / 2, Math.min(y(vals[i]), yo) , h("b", null, fmtDate(d)), h("div", null, `${fmtMin(vals[i])} de travail`), h("div", null, `TikTok : ${j.tiktok != null ? TIKTOK_LIB[j.tiktok] : "non renseigné"}`));
+      b.montrer(m.l + i * bande + bande / 2, Math.min(y(vals[i]), y(objs[i])), h("b", null, fmtDate(d)), h("div", null, `${fmtMin(vals[i])} de travail sur ${fmtMin(objs[i])}`), h("div", null, `TikTok : ${j.tiktok != null ? TIKTOK_LIB[j.tiktok] : "non renseigné"}`));
     };
     zone.addEventListener("pointerenter", montrer); zone.addEventListener("pointerdown", montrer);
     zone.addEventListener("pointerleave", () => b.cacher());
@@ -3298,7 +3646,7 @@ function vuePlus() {
 
   out.push(h("section", { class: "carte", "aria-labelledby": "t-profil" }, h("h2", { id: "t-profil", class: "h2" }, "Profil et objectif"),
     ligne("Prénom", c.prenom || "Pas renseigné", formProfil),
-    ligne("Objectif chaque soir, sans exception", fmtMin(c.objectif), formProfil),
+    ligne("Séance du soir", (() => { const nb = nbBlocsDuJour(), sem = semaineMontee(); return `${libelleBlocs(nb)} · ${fmtMin(dureeSeance(nb))} avec les pauses${sem ? ` · montée, semaine ${sem} sur 3` : ""}`; })(), formRythme),
     ligne("Moyenne générale de l’an dernier", c.moyennePrecedente ? fmtNote(c.moyennePrecedente) : "—", formProfil),
     ligne("Langues vivantes", `${c.lva} · ${c.lvb}`, formProfil)));
 
@@ -3327,7 +3675,8 @@ function vuePlus() {
 
   out.push(h("section", { class: "carte", "aria-labelledby": "t-methode" }, h("h2", { id: "t-methode", class: "h2" }, "Comment ça marche"),
     h("ol", { class: "plan" },
-      [["soir", "Un rendez-vous fixe", `Chaque soir, ${fmtMin(c.objectif)} minimum. La série compte les soirs où l’objectif est atteint.`],
+      [["soir", "Un rendez-vous fixe", `Chaque soir, des blocs de ${DUREE_BLOC} minutes de travail séparés par ${DUREE_PAUSE} minutes de pause. La montée se fait en 3 semaines : 2 blocs, puis 3, puis 4 (près de 2 h). La série compte les soirs où l’objectif du soir est atteint.`],
+       ["chrono", "Le bloc va jusqu’au bout", `Quand une activité est finie avant les ${DUREE_BLOC} minutes, la suivante démarre : cartes, quiz à pièges, exercice type bac, révision d’un autre chapitre. Les pauses trop longues sont notées.`],
        ["cartes", "Se tester plutôt que relire", "Les cartes reviennent après 1, 2, 4, 8 puis 16 jours : la répétition espacée fixe les connaissances."],
        ["courbe", "Alterner les matières", "Le chapitre du soir change selon ton niveau, la date de ta dernière révision et le poids de l’épreuve."],
        ["stylo", "Produire comme au bac", "Les exercices type bac entraînent à rédiger. Chaque erreur va dans le carnet."],
@@ -3352,14 +3701,28 @@ function formProfil() {
     const c = Object.assign({}, S.config);
     f.corps.append(
       h("label", { class: "champ" }, "Prénom", h("input", { type: "text", id: "p-prenom", value: c.prenom, oninput: (e) => { c.prenom = e.target.value; } })),
-      h("label", { class: "champ" }, "Objectif chaque soir (minutes)", h("span", { class: "aide" }, "Le minimum que tu tiens même les soirs sans motivation.")),
-      choixUnique([[30, "30 min"], [45, "45 min"], [60, "1 h"], [90, "1 h 30"], [120, "2 h"]], c.objectif, (v) => { c.objectif = Number(v); }),
       h("label", { class: "champ" }, "Moyenne générale de l’an dernier", h("input", { type: "text", id: "p-moy", inputmode: "decimal", value: c.moyennePrecedente == null ? "" : String(c.moyennePrecedente).replace(".", ","), oninput: (e) => { c.moyennePrecedente = Number(String(e.target.value).replace(",", ".")); } })),
       h("div", { class: "rangee etire" },
         h("label", { class: "champ" }, "LV A", h("input", { type: "text", id: "p-lva", value: c.lva, oninput: (e) => { c.lva = e.target.value; } })),
         h("label", { class: "champ" }, "LV B", h("input", { type: "text", id: "p-lvb", value: c.lvb, oninput: (e) => { c.lvb = e.target.value; } }))),
       h("button", { class: "btn grand primaire", type: "button", onclick: () => {
-        majConfig({ prenom: c.prenom.trim().slice(0, 40), objectif: c.objectif, moyennePrecedente: Number.isFinite(c.moyennePrecedente) ? clamp(c.moyennePrecedente, 0, 20) : null, lva: (c.lva || "LV A").trim().slice(0, 30), lvb: (c.lvb || "LV B").trim().slice(0, 30) });
+        majConfig({ prenom: c.prenom.trim().slice(0, 40), moyennePrecedente: Number.isFinite(c.moyennePrecedente) ? clamp(c.moyennePrecedente, 0, 20) : null, lva: (c.lva || "LV A").trim().slice(0, 30), lvb: (c.lvb || "LV B").trim().slice(0, 30) });
+        f.fermer(true); toast("Enregistré.");
+      } }, "Enregistrer"));
+  } });
+}
+function formRythme() {
+  ouvrirFeuille({ titre: "Séance du soir", construire: (f) => {
+    const r = Object.assign({}, S.config.rythme);
+    let mode = r.mode;
+    f.corps.append(
+      h("p", null, `Chaque bloc dure ${DUREE_BLOC} minutes, avec ${DUREE_PAUSE} minutes de pause entre deux. Dans un bloc, l’appli enchaîne les activités jusqu’au bout du temps.`),
+      h("label", { class: "champ" }, "Nombre de blocs chaque soir", h("span", { class: "aide" }, "La montée progressive évite de passer d’un coup de rien à 2 heures.")),
+      choixUnique([["montee", "Montée : 2, 3 puis 4 blocs"], [2, "2 blocs · 55 min"], [3, "3 blocs · 1 h 25"], [4, "4 blocs · 1 h 55"]], mode, (v) => { mode = v === "montee" ? "montee" : Number(v); }),
+      r.mode === "montee" && r.debut ? h("p", { class: "petit" }, `Montée commencée le ${fmtDateCourte(r.debut)} : semaine ${semaineMontee()} sur 3.`) : null,
+      r.mode === "montee" && r.debut ? h("button", { class: "btn fantome", type: "button", onclick: () => { majConfig({ rythme: { mode: "montee", debut: todayKey() } }); f.fermer(true); toast("La montée repart de 2 blocs aujourd’hui."); } }, "Recommencer la montée à 2 blocs") : null,
+      h("button", { class: "btn grand primaire", type: "button", onclick: () => {
+        majConfig({ rythme: { mode, debut: r.debut || todayKey() } });
         f.fermer(true); toast("Enregistré.");
       } }, "Enregistrer"));
   } });
